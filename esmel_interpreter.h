@@ -220,10 +220,7 @@ public:
 				}
 				switch (a1.type) {
 				case Type::INT:
-					current_stack.emplace_back(a1.value.int_v / a2.value.int_v);
-					break;
-				case Type::FLOAT:
-					current_stack.emplace_back(a1.value.float_v / a2.value.float_v);
+					current_stack.emplace_back(a1.value.int_v % a2.value.int_v);
 					break;
 				default: {
 					cerr << "Unsupported type for Modulo: " << a1.type_of() << " and " << a2.type_of();
@@ -441,27 +438,19 @@ public:
 				current_stack.push_back(o);
 				break;
 			}
-			case operation::Less: {
-				EsmelObject a2 = current_stack[size-2];
-				EsmelObject a1 = current_stack[size-1];
-				current_stack.resize(size-2);
-				if (a1.type == a2.type && a1.type == Type::BOOLEAN) {
-					current_stack[size-2] = a1.value.boolean_v || a2.value.boolean_v;
-				} else {
-					cerr << "Logic Or must take two boolean types, but get: " << a1.type_of() << " and " << a2.type_of();
-					error();
-				}
-				current_stack.resize(size-1);
+			case operation::Less:
 				break;
-			}
 			case operation::ELess:
 				break;
 			case operation::Greater:
 				break;
 			case operation::EGreater:
 				break;
-			case operation::Input:
+			case operation::Input: {
+				auto o = current_frame.local_variables[token.data] = objects.createString("");
+				std::getline(std::cin, o.value.string_v->v);
 				break;
+			}
 			case operation::NewArray: {
 				current_stack.push_back(objects.createArray());
 				break;
@@ -518,8 +507,34 @@ public:
 			}
 			case operation::GetLength:
 				break;
-			case operation::Link:
+			case operation::Link: {
+				EsmelObject a1 = current_stack[size-1];
+				EsmelObject a2 = current_stack[size-2];
+				current_stack.resize(size-2);
+				if (a1.type != a2.type) {
+					cerr << "Unsupported types for Link: " << a1.type_of() << " and " << a2.type_of();
+					error();
+				}
+				switch (a1.type) {
+				case Type::STRING: {
+					current_stack.push_back(objects.createString(a1.value.string_v->v + a2.value.string_v->v));
+					break;
+				}
+				case Type::ARRAY: {
+					auto a = objects.createArray();
+					a.value.array_v->v.reserve(a1.value.array_v->v.size() + a2.value.array_v->v.size());
+					std::ranges::copy(a1.value.array_v->v, std::back_inserter(a.value.array_v->v));
+					std::ranges::copy(a2.value.array_v->v, std::back_inserter(a.value.array_v->v));
+					current_stack.push_back(a);
+					break;
+				}
+				default: {
+					cerr << "Unsupported types for Link: " << a1.type_of() << " and " << a2.type_of();
+					error();
+				}
+				}
 				break;
+			}
 			default:
 				break;
 			}

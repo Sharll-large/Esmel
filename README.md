@@ -1,37 +1,45 @@
 # Esmel
-Welcome to the language of Esmel !
+### Welcome to the language of Esmel !
+##### Current Version: 3.7pre1
 
-Now the Esmel has already had some basic features.
+---
 
-The detailed language booklet will be written soon.
+#### Now Esmel has already supported many basic features.(Function, Array, GC, etc.)
 
-For example, you can write an Esmel script like this:
+#### Also, after my weeks of improving, Esmel has a very good performance.
 
-```Esmel
-fn fib x
-    return 1 if equal? x 1
-    return 1 if equal? x 2
-    return add fib sub x 1 fib sub x 2
+#### The Esmel Code is completely open-sourced, well-organized and logical(maybe), so you can read the source code to learn more about programming languages.
 
-fn hi sth
-    print "Hello, "
-    print sth
-    println "!"
+---
+#### A detailed language booklet will be written soon.
 
-fn main
-    set "me" "Esmel"
-    hi me
+#### But for now, you can write a simple Esmel script like this:
 
-    print "Fib(10): "
-    println fib 10
+```Shell 
+Function Main
+    # We designed a program to show the basic usages of Esmel
+    # and test Esmel's basic math performance.
 
-    println "Counting from 1-10:"
-    set "i" 0
-    flag Start
-      set "i" add i 1
-      println i
-    goto "Start" if ! equal? i 10
+    # In esmel, we use `Set` to edit a variable.
+    Set sum 0
+    Set i 1
+    # Set a timer to measure the time.
+    Set startTime CurrentTime
+
+    # Define a flag, so that we can repeat adding something.
+    flag start
+        Add sum i
+        Add i 1
+        end If Equal? i 100001
+        start   # Means Goto the flag `start`.
+    flag end
+
+    Set timeSum - CurrentTime startTime
+
+    Println "Sum of 1~100000: "
+    Println sum
+    Print   "Used time(ms): "
+    Print   timeSum
+    # On Sharll's computer, it takes 5ms, which is 100% faster than Python.
 ```
-
-As you see, Esmel already supports many features required by programming languages, such as functions, local variables, recursion, branching, loops.
 

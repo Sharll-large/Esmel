@@ -15,11 +15,11 @@ using std::vector, std::string, std::unordered_map, std::map, std::stack, std::n
 
 int main(int argc, char* argv[])
 {
-	if (argc != 2) {
+	if (argc == 2) {
 		std::cout << std::format(	""
 	"      *          Welcome to the Esmel Language!\n"
 	"     ***         Author: Sharll\n"
-	"   *******       Version: v3.7-official-pre-release\n"
+	"   *******       Version: v3.7-official-pre-release-1\n"
 	"*************    Usage:\n"
 	"   *******           {} your_esmel_code.esm\n"
 	"     ***         \n"
@@ -27,7 +27,8 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 
-	string file =  argv[1];
+	// string file =  argv[1];
+	string file = R"(C:\Users\Sharll\CLionProjects\Esmel_Lang\test.esm)";
 	string mainfunc = "main";
 
 	esmel_compiler e{};
@@ -55,7 +56,6 @@ int main(int argc, char* argv[])
 	// 	}
 	//
 	// }
-
 	return 0;
 
 	for (auto i: e.preloaded_codes) {

@@ -3,49 +3,43 @@
 #include <string>
 #include <vector>
 
+struct EsmelObject;
+
 enum class Type {
 	UNDEFINED, INT, FLOAT, BOOLEAN, STRING, ARRAY
 };
 
+struct esmel_string {string v; bool gcflag;};
+struct esmel_array {vector<EsmelObject> v; bool gcflag;};
+
 struct EsmelObject {
 	Type type;						// 类型标记
-	bool gc_mark = false; // GC 标记
 	bool changeable = true; // 是否可变（用于常用对象缓存）
 	union {
 		long long int_v;
 		double float_v;
 		bool boolean_v;
-		std::string* string_v;
-		std::vector<EsmelObject*>* array_v;
+		esmel_string* string_v;
+		esmel_array* array_v;
 	} value{};
 
-	EsmelObject(Type t = Type::UNDEFINED): type(t), gc_mark(false) {
-		if (t == Type::STRING) {
-			value.string_v = new std::string();
-		} else if (t == Type::ARRAY) {
-			value.array_v = new std::vector<EsmelObject*>();
-		}
+	EsmelObject(Type t = Type::UNDEFINED): type(t) {
+
 	}
-	~EsmelObject() {
-		if (type == Type::STRING && value.string_v) {
-			delete value.string_v;
-		} else if (type == Type::ARRAY && value.array_v) {
-			delete value.array_v;
-		}
-	}
+	~EsmelObject() {}
 
 	std::string to_string() {
 		switch (type) {
 		case Type::INT: return std::to_string(value.int_v);
 		case Type::FLOAT: return std::to_string(value.float_v);
 		case Type::BOOLEAN: return value.boolean_v ? "true" : "false";
-		case Type::STRING: return *value.string_v;
+		case Type::STRING: return value.string_v->v;
 		case Type::ARRAY: {
 			std::string result = "[";
-			for (size_t i = 0; i < value.array_v->size(); ++i)
+			for (size_t i = 0; i < value.array_v->v.size(); ++i)
 			{
-				result += value.array_v->at(i)->to_string();
-				if (i < value.array_v->size() - 1)
+				result += value.array_v->v.at(i).to_string();
+				if (i < value.array_v->v.size() - 1)
 				{
 					result += ", ";
 				}
@@ -79,13 +73,13 @@ struct EsmelObject {
 		case Type::INT: return value.int_v == another.value.int_v;
 		case Type::FLOAT: return value.float_v == another.value.float_v;
 		case Type::BOOLEAN: return value.boolean_v == another.value.boolean_v;
-		case Type::STRING: return *value.string_v == *another.value.string_v;
+		case Type::STRING: return value.string_v->v == another.value.string_v->v;
 		case Type::ARRAY:
 		{
-			if (value.array_v->size() != another.value.array_v->size()) return false;
-			for (int i = 0; i < value.array_v->size(); i++)
+			if (value.array_v->v.size() != another.value.array_v->v.size()) return false;
+			for (int i = 0; i < value.array_v->v.size(); i++)
 			{
-				if (!value.array_v->at(i)->equal_to(*another.value.array_v->at(i))) return false;
+				if (!value.array_v->v.at(i).equal_to(another.value.array_v->v.at(i))) return false;
 			}
 			return true;
 		}
@@ -105,19 +99,23 @@ struct EsmelObject {
 		}
 	}
 
-	EsmelObject(long long val) : type(Type::INT), gc_mark(false) {
+	EsmelObject(long long val) : type(Type::INT) {
 		value.int_v = val;
 	}
 
-	EsmelObject(double val) : type(Type::FLOAT), gc_mark(false) {
+	EsmelObject(double val) : type(Type::FLOAT) {
 		value.float_v = val;
 	}
 
-	EsmelObject(bool val) : type(Type::BOOLEAN), gc_mark(false) {
+	EsmelObject(bool val) : type(Type::BOOLEAN) {
 		value.boolean_v = val;
 	}
 
-	EsmelObject(const std::string& val) : type(Type::STRING), gc_mark(false) {
-		value.string_v = new std::string(val);
+	EsmelObject(esmel_string* val) : type(Type::STRING) {
+		value.string_v = val;
+	}
+
+	EsmelObject(esmel_array* val) : type(Type::ARRAY) {
+		value.array_v = val;
 	}
 };

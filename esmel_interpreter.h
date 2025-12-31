@@ -21,8 +21,6 @@
 #include "esmel_object.h"
 #include "esmel_gc.h"
 
-#define small_id_limit 128
-
 using std::vector, std::string, std::unordered_map, std::map, std::stack, std::shared_ptr,
 		std::unordered_set;
 
@@ -30,11 +28,12 @@ class frame // 栈帧
 {
 public:
 	esmel_function* function;
-	std::array<EsmelObject*, small_id_limit> temp_local_variables; // 小id变量直接存储
-	unordered_map<size_t, EsmelObject*> local_variables; // 大id变量存入哈希表
-	std::vector<EsmelObject*> exec_stack; // 执行栈
+	std::vector<EsmelObject> local_variables; // 变量存储，id为索引
+	std::vector<EsmelObject> exec_stack; // 执行栈
 	int on_line;
-	frame(esmel_function* f, unordered_map<size_t, EsmelObject*> vars): function(f), local_variables(std::move(vars)), on_line(0) {}
+	frame(esmel_function* f): function(f), on_line(0) {
+		local_variables.resize(f->variable_count, {});
+	}
 };
 
 class EsmelInterpreter
@@ -45,10 +44,9 @@ public:
 	std::vector<frame> stack_frame; // 栈帧（顶部表示当前的栈帧，存储局部变量信息。）
 
 	void gc() {
-		for (auto i: stack_frame) {
-			for (auto j: i.exec_stack) objects.mark(j);
-			for (auto j: i.temp_local_variables) objects.mark(j);
-			for (auto j: i.local_variables) objects.mark(j.second);
+		for (const auto& i: stack_frame) {
+			for (const auto& j: i.exec_stack) objects.mark(j);
+			for (const auto& j: i.local_variables) objects.mark(j);
 		}
 		objects.gc();
 	}
@@ -57,9 +55,7 @@ public:
 	void call(long long id)
 	// 调用一个非内置的esmel函数。
 	{
-		auto nframe = frame(&functions[id], {});
-
-		for (auto& i: nframe.temp_local_variables) i = objects.createUndefined();
+		auto nframe = frame(&functions[id]);
 
 		for (int i = 0; i < nframe.function->arguments; i++)
 		{
@@ -68,8 +64,6 @@ public:
 				std::cerr << "Error: needs " << nframe.function->arguments << " argument(s), but only " << i << " are given.";
 				error();
 			}
-			if (i < small_id_limit) nframe.temp_local_variables[i] = stack_frame.back().exec_stack.back();
-			else nframe.local_variables[i] = stack_frame.back().exec_stack.back();
 			stack_frame.back().exec_stack.pop_back();
 		}
 
@@ -92,97 +86,80 @@ public:
 		}
 		exit(EXIT_FAILURE);
 	}
+
 	int exec_line(vector<esmel_op_code> &code, int line)
 	// 执行一段esmel代码
 	{
 
-		for (long long i = code.size() - 1; i >= 0; i--)
+		for (auto token: code)
 		{
 			frame& current_frame = stack_frame.back();
-			vector<EsmelObject*>& current_stack = current_frame.exec_stack;
+			vector<EsmelObject>& current_stack = current_frame.exec_stack;
 			size_t size = current_stack.size();
-			auto token = code[i];
 			switch (token.op) {
 			case operation::CreateInt:
-				current_stack.push_back(objects.createInt(token.data));
+				current_stack.emplace_back(token.data);
 				break;
 			case operation::CreateFloat:
-				current_stack.push_back(objects.createFloat(std::bit_cast<double>(token.data)));
+				current_stack.emplace_back(std::bit_cast<double>(token.data));
 				break;
 			case operation::CreateBoolean:
-				current_stack.push_back(objects.createBoolean(token.data));
+				current_stack.emplace_back(static_cast<bool>(token.data));
 				break;
 			case operation::GetStaticStr:
-				current_stack.push_back(objects.createString(stack_frame.back().function->static_strs[token.data]));
+				current_stack.push_back(objects.createString((stack_frame.back().function->static_strs[token.data])));
 				break;
 			case operation::CreateUndefined:
-				current_stack.push_back(objects.createUndefined());
+				current_stack.emplace_back();
 				break;
 			case operation::GetVar: {
-				if (token.data < 128) {
-					current_stack.push_back(current_frame.temp_local_variables[token.data]);
-					break;
-				}else{
-					auto k = current_frame.local_variables.find(token.data);
-					if (k == current_frame.local_variables.end()) {
-						current_frame.local_variables[token.data] = objects.createUndefined();
-					}
-					current_stack.push_back(current_frame.local_variables[token.data]);
-					break;
-				}
-			}
-			case operation::SetVar: {
-				EsmelObject* source = current_stack[size-2];
-				EsmelObject* target = current_stack[size-1];
-				current_stack.resize(size-2);
-				*target = *source;
+				current_stack.push_back(current_frame.local_variables[token.data]);
 				break;
 			}
-			case operation::Add:
-			{
-				EsmelObject* a2 = current_stack[size-2];
-				EsmelObject* a1 = current_stack[size-1];
+			case operation::SetVar: {
+				current_frame.local_variables[token.data] = current_stack[size-1];
+				current_stack.resize(size-1);
+				break;
+			}
+			case operation::Add: {
+				auto a1 = current_stack[size-1];
+				auto a2 = current_stack[size-2];
 				current_stack.resize(size-2);
-				if (a1->type != a2->type) {
-					cerr << "Unsupported type for add: " << a1->type_of() << " and " << a2->type_of();
+				if (a1.type != a2.type) {
+					cerr << "Unsupported type for Add: " << a1.type_of() << " and " << a2.type_of();
 					error();
 				}
-				switch (a1->type) {
+				switch (a1.type) {
 				case Type::INT:
-					current_stack.push_back(objects.createInt(a1->value.int_v + a2->value.int_v));
+					current_stack.emplace_back(a1.value.int_v + a2.value.int_v);
 					break;
 				case Type::FLOAT:
-					current_stack.push_back(objects.createFloat(a1->value.float_v + a2->value.float_v));
-					break;
-				case Type::STRING:
-					current_stack.push_back(objects.createString(*a1->value.string_v + *a2->value.string_v));
-					break;
-				case Type::ARRAY:
+					current_stack.emplace_back(a1.value.float_v + a2.value.float_v);
 					break;
 				default: {
-					cerr << "Unsupported type for add: " << a1->type_of() << " and " << a2->type_of();
+					cerr << "Unsupported type for Add: " << a1.type_of() << " and " << a2.type_of();
 					error();
 				}
 				}
 				break;
 			}
 			case operation::Sub: {
-				EsmelObject* a2 = current_stack[size-2];
-				EsmelObject* a1 = current_stack[size-1];
+				auto a1 = current_stack[size-1];
+				auto a2 = current_stack[size-2];
 				current_stack.resize(size-2);
-				if (a1->type != a2->type) {
-					cerr << "Unsupported type for sub: " << a1->type_of() << " and " << a2->type_of();
+				if (a1.type != a2.type) {
+					cerr << "Unsupported type for Subtract: " << a1.type_of() << " and " << a2.type_of();
 					error();
 				}
-				switch (a1->type) {
+				switch (a1.type) {
 				case Type::INT:
-					current_stack.push_back(objects.createInt(a1->value.int_v - a2->value.int_v));
+					current_stack.emplace_back(a1.value.int_v - a2.value.int_v);
 					break;
 				case Type::FLOAT:
-					current_stack.push_back(objects.createFloat(a1->value.float_v - a2->value.float_v));
+					current_stack.emplace_back(a1.value.float_v - a2.value.float_v);
 					break;
 				default: {
-					cerr << "Unsupported type for sub: " << a1->type_of() << " and " << a2->type_of();
+					cerr << "Unsupported type for Subtract: " << a1.type_of() << " and " << a2.type_of();
 					error();
 				}
 				}
@@ -190,70 +167,73 @@ public:
 			}
 
 			case operation::Mul: {
-				EsmelObject* a2 = current_stack[size-2];
-				EsmelObject* a1 = current_stack[size-1];
+				auto a1 = current_stack[size-1];
+				auto a2 = current_stack[size-2];
 				current_stack.resize(size-2);
-				if (a1->type != a2->type) {
-					cerr << "Unsupported type for mul: " << a1->type_of() << " and " << a2->type_of();
+				if (a1.type != a2.type) {
+					cerr << "Unsupported type for Multiply: " << a1.type_of() << " and " << a2.type_of();
 					error();
 				}
-				switch (a1->type) {
+				switch (a1.type) {
 				case Type::INT:
-					current_stack.push_back(objects.createInt(a1->value.int_v * a2->value.int_v));
+					current_stack.emplace_back(a1.value.int_v * a2.value.int_v);
 					break;
 				case Type::FLOAT:
-					current_stack.push_back(objects.createFloat(a1->value.float_v * a2->value.float_v));
+					current_stack.emplace_back(a1.value.float_v * a2.value.float_v);
 					break;
 				default: {
-					cerr << "Unsupported type for mul: " << a1->type_of() << " and " << a2->type_of();
+					cerr << "Unsupported type for Multiply: " << a1.type_of() << " and " << a2.type_of();
 					error();
 				}
 				}
 				break;
 			}
 			case operation::Div: {
-				EsmelObject* a2 = current_stack[size-2];
-				EsmelObject* a1 = current_stack[size-1];
+				auto a1 = current_stack[size-1];
+				auto a2 = current_stack[size-2];
 				current_stack.resize(size-2);
-				if (a1->type != a2->type) {
-					cerr << "Unsupported type for div: " << a1->type_of() << " and " << a2->type_of();
+				if (a1.type != a2.type) {
+					cerr << "Unsupported type for Division: " << a1.type_of() << " and " << a2.type_of();
 					error();
 				}
-				switch (a1->type) {
+				switch (a1.type) {
 				case Type::INT:
-					current_stack.push_back(objects.createInt(a1->value.int_v / a2->value.int_v));
+					current_stack.emplace_back(a1.value.int_v / a2.value.int_v);
 					break;
 				case Type::FLOAT:
-					current_stack.push_back(objects.createFloat(a1->value.float_v / a2->value.float_v));
+					current_stack.emplace_back(a1.value.float_v / a2.value.float_v);
 					break;
 				default: {
-					cerr << "Unsupported type for div: " << a1->type_of() << " and " << a2->type_of();
+					cerr << "Unsupported type for Division: " << a1.type_of() << " and " << a2.type_of();
 					error();
 				}
 				}
 				break;
 			}
 			case operation::Mod: {
-				EsmelObject* a2 = current_stack[size-2];
-				EsmelObject* a1 = current_stack[size-1];
+				auto a1 = current_stack[size-1];
+				auto a2 = current_stack[size-2];
 				current_stack.resize(size-2);
-				if (a1->type != a2->type) {
-					cerr << "Unsupported type for mod: " << a1->type_of() << " and " << a2->type_of();
+				if (a1.type != a2.type) {
+					cerr << "Unsupported type for Modulo: " << a1.type_of() << " and " << a2.type_of();
 					error();
 				}
-				switch (a1->type) {
+				switch (a1.type) {
 				case Type::INT:
-					current_stack.push_back(objects.createInt(a1->value.int_v % a2->value.int_v));
+					current_stack.emplace_back(a1.value.int_v / a2.value.int_v);
+					break;
+				case Type::FLOAT:
+					current_stack.emplace_back(a1.value.float_v / a2.value.float_v);
 					break;
 				default: {
-					cerr << "Unsupported type for mod: " << a1->type_of() << " and " << a2->type_of();
+					cerr << "Unsupported type for Modulo: " << a1.type_of() << " and " << a2.type_of();
 					error();
 				}
 				}
 				break;
 			}
 			case operation::Print:
-				std::cout << current_stack.back()->to_string();
+				std::cout << current_stack.back().to_string();
 				current_stack.pop_back();
 				break;
 			case operation::Goto:
@@ -262,112 +242,107 @@ public:
 				call(token.data);
 				break;
 			case operation::AddBy: {
-				EsmelObject* a2 = current_stack[size-2];
-				EsmelObject* a1 = current_stack[size-1];
-				current_stack.resize(size-2);
-				if (a1->type != a2->type) {
-					cerr << "Unsupported type for AddBy: " << a1->type_of() << " and " << a2->type_of();
+				auto& origin = current_frame.local_variables[token.data];
+				auto a = current_stack[size-1];
+				current_stack.resize(size-1);
+				if (origin.type != a.type) {
+					cerr << "Unsupported type for Add: " << origin.type_of() << " and " << a.type_of();
 					error();
 				}
-				switch (a1->type) {
+				switch (a.type) {
 				case Type::INT:
-					a1->value.int_v += a2->value.int_v;
+					origin.value.int_v += a.value.int_v;
 					break;
 				case Type::FLOAT:
-					a1->value.float_v += a2->value.float_v;
-					break;
-				case Type::STRING:
-					*a1->value.string_v += *a2->value.string_v;
-					break;
-				case Type::ARRAY:
+					origin.value.float_v += a.value.float_v;;
 					break;
 				default: {
-					cerr << "Unsupported type for AddBy: " << a1->type_of() << " and " << a2->type_of();
+					cerr << "Unsupported type for Add: " << a.type_of() << " and " << a.type_of();
 					error();
 				}
 				}
 				break;
 			}
 			case operation::SubBy: {
-				EsmelObject* a2 = current_stack[size-2];
-				EsmelObject* a1 = current_stack[size-1];
-				current_stack.resize(size-2);
-				if (a1->type != a2->type) {
-					cerr << "Unsupported type for SubBy: " << a1->type_of() << " and " << a2->type_of();
+				auto& origin = current_frame.local_variables[token.data];
+				auto a = current_stack[size-1];
+				current_stack.resize(size-1);
+				if (origin.type != a.type) {
+					cerr << "Unsupported type for Subtract: " << origin.type_of() << " and " << a.type_of();
 					error();
 				}
-				switch (a1->type) {
+				switch (a.type) {
 				case Type::INT:
-					a1->value.int_v -= a2->value.int_v;
+					origin.value.int_v -= a.value.int_v;
 					break;
 				case Type::FLOAT:
-					a1->value.float_v -= a2->value.float_v;
+					origin.value.float_v -= a.value.float_v;;
 					break;
 				default: {
-					cerr << "Unsupported type for SubBy: " << a1->type_of() << " and " << a2->type_of();
+					cerr << "Unsupported type for Subtract: " << a.type_of() << " and " << a.type_of();
 					error();
 				}
 				}
 				break;
 			}
 			case operation::MulBy: {
-				EsmelObject* a2 = current_stack[size-2];
-				EsmelObject* a1 = current_stack[size-1];
-				current_stack.resize(size-2);
-				if (a1->type != a2->type) {
-					cerr << "Unsupported type for MulBy: " << a1->type_of() << " and " << a2->type_of();
+				auto& origin = current_frame.local_variables[token.data];
+				auto a = current_stack[size-1];
+				current_stack.resize(size-1);
+				if (origin.type != a.type) {
+					cerr << "Unsupported type for Multiply: " << origin.type_of() << " and " << a.type_of();
 					error();
 				}
-				switch (a1->type) {
+				switch (a.type) {
 				case Type::INT:
-					a1->value.int_v *= a2->value.int_v;
+					origin.value.int_v *= a.value.int_v;
 					break;
 				case Type::FLOAT:
-					a1->value.float_v *= a2->value.float_v;
+					origin.value.float_v *= a.value.float_v;;
 					break;
 				default: {
-					cerr << "Unsupported type for MulBy: " << a1->type_of() << " and " << a2->type_of();
+					cerr << "Unsupported type for Multiply: " << a.type_of() << " and " << a.type_of();
 					error();
 				}
 				}
 				break;
 			}
 			case operation::DivBy: {
-				EsmelObject* a2 = current_stack[size-2];
-				EsmelObject* a1 = current_stack[size-1];
-				current_stack.resize(size-2);
-				if (a1->type != a2->type) {
-					cerr << "Unsupported type for DivBy: " << a1->type_of() << " and " << a2->type_of();
+				auto& origin = current_frame.local_variables[token.data];
+				auto a = current_stack[size-1];
+				current_stack.resize(size-1);
+				if (origin.type != a.type) {
+					cerr << "Unsupported type for Division: " << origin.type_of() << " and " << a.type_of();
 					error();
 				}
-				switch (a1->type) {
+				switch (a.type) {
 				case Type::INT:
-					a1->value.int_v /= a2->value.int_v;
+					origin.value.int_v /= a.value.int_v;
 					break;
 				case Type::FLOAT:
-					a1->value.float_v /= a2->value.float_v;
+					origin.value.float_v /= a.value.float_v;;
 					break;
 				default: {
-					cerr << "Unsupported type for DivBy: " << a1->type_of() << " and " << a2->type_of();
+					cerr << "Unsupported type for Division: " << a.type_of() << " and " << a.type_of();
 					error();
 				}
 				}
 				break;
 			}
 			case operation::ModBy: {
-				EsmelObject* a2 = current_stack[size-2];
-				EsmelObject* a1 = current_stack[size-1];
-				current_stack.resize(size-2);
-				if (a1->type != a2->type) {
-					cerr << "Unsupported type for ModBy: " << a1->type_of() << " and " << a2->type_of();
+				auto& origin = current_frame.local_variables[token.data];
+				auto a = current_stack[size-1];
+				current_stack.resize(size-1);
+				if (origin.type != a.type) {
+					cerr << "Unsupported type for Modulo: " << origin.type_of() << " and " << a.type_of();
 					error();
 				}
-				switch (a1->type) {
+				switch (a.type) {
 				case Type::INT:
-					a1->value.int_v %= a2->value.int_v;
+					origin.value.int_v %= a.value.int_v;
 					break;
 				default: {
-					cerr << "Unsupported type for ModBy: " << a1->type_of() << " and " << a2->type_of();
+					cerr << "Unsupported type for Modulo: " << a.type_of() << " and " << a.type_of();
 					error();
 				}
 				}
@@ -376,39 +351,32 @@ public:
 			case operation::Copy:
 				break;
 			case operation::Typeof: {
-				EsmelObject* a1 = current_stack[size-1];
-				current_stack[size-1] = objects.createString(a1->type_of());
+				EsmelObject a1 = current_stack[size-1];
+				current_stack[size-1] = objects.createString(a1.type_of());
 				current_stack.resize(size-1);
-				break;
-			}
-			case operation::Is: {
-				EsmelObject* a2 = current_stack[size-2];
-				EsmelObject* a1 = current_stack[size-1];
-				current_stack.resize(size-1);
-				current_stack[size-2] = objects.createBoolean(a1 == a2);
 				break;
 			}
 			case operation::Equal: {
-				EsmelObject* a2 = current_stack[size-2];
-				EsmelObject* a1 = current_stack[size-1];
+				EsmelObject a2 = current_stack[size-2];
+				EsmelObject a1 = current_stack[size-1];
+				current_stack[size-2] = {a1.equal_to(a2)};
 				current_stack.resize(size-1);
-				current_stack[size-2] = objects.createBoolean(a1->equal_to(*a2));
 				break;
 			}
 			case operation::Gc:
 				gc();
 				break;
 			case operation::Println:
-				std::cout << current_stack.back()->to_string() << std::endl;
+				std::cout << current_stack.back().to_string() << std::endl;
 				current_stack.pop_back();
 				break;
 			case operation::If: {
 				const auto condition = stack_frame.back().exec_stack.back();stack_frame.back().exec_stack.pop_back();
-				if (condition->type != Type::BOOLEAN) {
-					cerr << "\'if\' must take a boolean value, but get: " << condition->type_of();
+				if (condition.type != Type::BOOLEAN) {
+					cerr << "\'if\' must take a boolean value, but get: " << condition.value.int_v;
 					error();
 				}
-				if (!condition->value.boolean_v) return line+1;
+				if (!condition.value.boolean_v) return line+1;
 				break;
 			}
 			case operation::Return: {
@@ -420,46 +388,137 @@ public:
 				break;
 			}
 			case operation::And: {
-				EsmelObject* a2 = current_stack[size-2];
-				EsmelObject* a1 = current_stack[size-1];
+				EsmelObject a2 = current_stack[size-2];
+				EsmelObject a1 = current_stack[size-1];
 				current_stack.resize(size-2);
-				if (a1->type == a2->type && a1->type == Type::BOOLEAN) {
-					current_stack[size-2] = objects.createBoolean(a1->value.boolean_v && a2->value.boolean_v);
+				if (a1.type == a2.type && a1.type == Type::BOOLEAN) {
+					current_stack[size-2] = a1.value.boolean_v && a2.value.boolean_v;
 				} else {
-					cerr << "Unsupported type for and: " << a1->type_of() << " and " << a2->type_of();
+					cerr << "Logic And must take two boolean types, but get: " << a1.type_of() << " and " << a2.type_of();
 					error();
 				}
+				current_stack.resize(size-1);
 				break;
 			}
 			case operation::Or: {
-				EsmelObject* a2 = current_stack[size-2];
-				EsmelObject* a1 = current_stack[size-1];
+				EsmelObject a2 = current_stack[size-2];
+				EsmelObject a1 = current_stack[size-1];
 				current_stack.resize(size-2);
-				if (a1->type == a2->type && a1->type == Type::BOOLEAN) {
-					current_stack[size-2] = objects.createBoolean(a1->value.boolean_v || a2->value.boolean_v);
+				if (a1.type == a2.type && a1.type == Type::BOOLEAN) {
+					current_stack[size-2] = a1.value.boolean_v || a2.value.boolean_v;
 				} else {
-					cerr << "Unsupported type for or: " << a1->type_of() << " and " << a2->type_of();
+					cerr << "Logic Or must take two boolean types, but get: " << a1.type_of() << " and " << a2.type_of();
+					error();
+				}
+				current_stack.resize(size-1);
+				break;
+			}
+			case operation::Not: {
+				EsmelObject a = current_stack[size-1];
+				if (a.type == Type::BOOLEAN) {
+					current_stack[size-1] = !a.value.boolean_v;
+				} else {
+					cerr << "Logic Not must take a boolean type, but get: " << a.type_of();
 					error();
 				}
 				break;
 			}
-			case operation::Not: {
-				EsmelObject* a1 = current_stack[size-1];
-				if (a1->type == Type::BOOLEAN) {
-					current_stack[size-1] = objects.createBoolean(a1->value.boolean_v);
-					current_stack.resize(size-1);
-				} else {
-					cerr << "Unsupported type for not: " << a1->type_of();
-				}
-				break;
-			}
-			case operation::Error:
+			case operation::Error: {
+				EsmelObject a = current_stack[size-1];
+				cerr << a.to_string();
 				error();
 				break;
-			case operation::GetTime:
-				stack_frame.back().exec_stack.push_back(objects.createInt(
+			}
+			case operation::GetTime: {
+				current_stack.emplace_back(
 				std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count()
-				));
+				);
+				break;
+			}
+			case operation::Readln: {
+				auto o = objects.createString("");
+				std::getline(std::cin, o.value.string_v->v);
+				current_stack.push_back(o);
+				break;
+			}
+			case operation::Less: {
+				EsmelObject a2 = current_stack[size-2];
+				EsmelObject a1 = current_stack[size-1];
+				current_stack.resize(size-2);
+				if (a1.type == a2.type && a1.type == Type::BOOLEAN) {
+					current_stack[size-2] = a1.value.boolean_v || a2.value.boolean_v;
+				} else {
+					cerr << "Logic Or must take two boolean types, but get: " << a1.type_of() << " and " << a2.type_of();
+					error();
+				}
+				current_stack.resize(size-1);
+				break;
+			}
+			case operation::ELess:
+				break;
+			case operation::Greater:
+				break;
+			case operation::EGreater:
+				break;
+			case operation::Input:
+				break;
+			case operation::NewArray: {
+				current_stack.push_back(objects.createArray());
+				break;
+			}
+			case operation::SetAt: {
+				EsmelObject origin = current_stack[size-1];
+				EsmelObject index = current_stack[size-2];
+				EsmelObject target = current_stack[size-3];
+				current_stack.resize(size-3);
+				if (origin.type != Type::ARRAY) {
+					cerr << "SetAt can only be used on arrays, but get: " << origin.type_of();
+					error();
+				}
+				if (index.type != Type::INT) {
+					cerr << "SetAt index must be an Integer, but getL " << index.type_of();
+					error();
+				}
+				if (index.value.int_v >= origin.value.array_v->v.size() || index.value.int_v < 0) {
+					cerr << "Index " << index.value.int_v << " out of range.";
+					error();
+				}
+				origin.value.array_v->v[index.value.int_v] = target;
+				break;
+			}
+			case operation::GetAt: {
+				EsmelObject origin = current_stack[size-1];
+				EsmelObject index = current_stack[size-2];
+				current_stack.resize(size-1);
+				if (origin.type != Type::ARRAY) {
+					cerr << "SetAt can only be used on arrays, but get: " << origin.type_of();
+					error();
+				}
+				if (index.type != Type::INT) {
+					cerr << "SetAt index must be an Integer, but getL " << index.type_of();
+					error();
+				}
+				if (index.value.int_v >= origin.value.array_v->v.size() || index.value.int_v < 0) {
+					cerr << "Index " << index.value.int_v << " out of range.";
+					error();
+				}
+				current_stack[size-2] = origin.value.array_v->v[index.value.int_v];
+				break;
+			}
+			case operation::Append: {
+				EsmelObject origin = current_stack[size-1];
+				EsmelObject target = current_stack[size-2];
+				current_stack.resize(size-2);
+				if (origin.type != Type::ARRAY) {
+					cerr << "SetAt can only be used on arrays, but get: " << origin.type_of();
+					error();
+				}
+				origin.value.array_v->v.push_back(target);
+				break;
+			}
+			case operation::GetLength:
+				break;
+			case operation::Link:
 				break;
 			default:
 				break;

@@ -32,11 +32,11 @@ public:
     void mark(const EsmelObject& obj) {
         switch (obj.type) {
         case Type::STRING:
-            obj.value.string_v->gcflag = true;
+            obj.value.string_v->marked = true;
             break;
         case Type::ARRAY: {
             // 数组则递归标记
-            obj.value.array_v->gcflag = true;
+            obj.value.array_v->marked = true;
             for (const auto& elem: obj.value.array_v->v) {
                 mark(elem);
             }
@@ -51,8 +51,8 @@ public:
     void gc() {
         size_t deleted = 0;
         for (long long i = 0; i < all_strings.size(); i++) {
-            if (all_strings[i]->gcflag) {
-                all_strings[i]->gcflag = false;
+            if (all_strings[i]->marked) {
+                all_strings[i]->marked = false;
                 all_strings[i-deleted] = all_strings[i];
             } else {
                 delete all_strings[i];
@@ -62,8 +62,8 @@ public:
         all_strings.resize(all_strings.size() - deleted);
         deleted = 0;
         for (long long i = 0; i < all_arrays.size(); i++) {
-            if (all_arrays[i]->gcflag) {
-                all_arrays[i]->gcflag = false;
+            if (all_arrays[i]->marked) {
+                all_arrays[i]->marked = false;
                 all_arrays[i-deleted] = all_arrays[i];
             } else {
                 delete all_arrays[i];

@@ -15,11 +15,11 @@ using std::vector, std::string, std::unordered_map, std::map, std::stack, std::n
 
 int main(int argc, char* argv[])
 {
-	if (argc == 2) {
+	if (argc == 1) {
 		std::cout << std::format(	""
 	"      *          Welcome to the Esmel Language!\n"
 	"     ***         Author: Sharll\n"
-	"   *******       Version: v3.7-official-pre-release-1\n"
+	"   *******       Version: v3.7-official-pre-release-3\n"
 	"*************    Usage:\n"
 	"   *******           {} your_esmel_code.esm\n"
 	"     ***         \n"
@@ -28,15 +28,18 @@ int main(int argc, char* argv[])
 	}
 
 	// string file =  argv[1];
-	string file = R"(C:\Users\Sharll\CLionProjects\Esmel_Lang\test.esm)";
+	string file = argv[1];
 	string mainfunc = "main";
 
-	esmel_compiler e{};
-	e.add_target(file);
-	e.compile();
+	auto* e = new esmel_compiler();
+	e->add_target(file);
+	e->compile();
 
 	EsmelInterpreter esm;
-	esm.functions = e.esmel_functions;
+	esm.functions = e->esmel_functions;
+
+	delete e;
+
 	esm.call(0);
 
 	// for (auto i: e.esmel_functions) {
@@ -57,27 +60,27 @@ int main(int argc, char* argv[])
 	//
 	// }
 	return 0;
+	//
+	// for (auto i: e.preloaded_codes) {
+	// 	std::cout << "function " << i.first << ":" << std::endl << "\targuments: " << i.second.arguments;
+	// 	std::cout << std::endl << "\tcode: ";
+	// 	for (auto j = 0; j < i.second.code.size(); j++) {
+	// 		cout << i.second.real_line_num[j] << '\t';
+	// 		for (auto k = 0; k<i.second.code[j].size(); k++) {
+	// 			cout << i.second.code[j][k] << ' ';
+	// 		}
+	// 		std::cout << std::endl << '\t';
+	// 	}
+	// 	cout << "flags: " << endl;
+	// 	for (auto j : i.second.temp_flags_record) {
+	// 		cout << j.first << ' ' << j.second << endl;
+	// 	}
+	// 	cout << "variables: " << endl;
+	// 	for (auto j : i.second.temp_variable_record) {
+	// 		cout << j.first << ' ' << j.second << endl;
+	// 	}
 
-	for (auto i: e.preloaded_codes) {
-		std::cout << "function " << i.first << ":" << std::endl << "\targuments: " << i.second.arguments;
-		std::cout << std::endl << "\tcode: ";
-		for (auto j = 0; j < i.second.code.size(); j++) {
-			cout << i.second.real_line_num[j] << '\t';
-			for (auto k = 0; k<i.second.code[j].size(); k++) {
-				cout << i.second.code[j][k] << ' ';
-			}
-			std::cout << std::endl << '\t';
-		}
-		cout << "flags: " << endl;
-		for (auto j : i.second.temp_flags_record) {
-			cout << j.first << ' ' << j.second << endl;
-		}
-		cout << "variables: " << endl;
-		for (auto j : i.second.temp_variable_record) {
-			cout << j.first << ' ' << j.second << endl;
-		}
-
-	}
+	// }
 
 
 	return 0;

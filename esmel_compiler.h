@@ -11,6 +11,7 @@
 
 using namespace std;
 
+
 class esmel_compiler {
 	struct preloaded_code {
 		size_t id{};
@@ -154,13 +155,18 @@ public:
 					preloaded_codes[current].temp_variable_record[parsed[i][j]] = preloaded_codes[current].temp_variable_record.size();
 					preloaded_codes[current].keywords.insert(parsed[i][j]);
 				}
-			} else if (parsed[i][0] == "flag") {
+			} else if (parsed[i][0] == "Flag") {
 				if (parsed[i].size() != 2) {
 					std::cerr << "Error: Illegal flag defined.\n\tat file " << filename << '(' << i+1 << ')' << std::endl;
 					exit(0);
 				}
 				if (preloaded_codes[current].keywords.contains(parsed[i][1])) {
 					std::cerr << "Error: Redefined keyword \'" << parsed[i][1] << "\'\n\tat " << filename << '(' << i+1 << ')' << std::endl;
+					exit(0);
+				}
+				if (!std::isupper(parsed[i][1][0])) {
+					std::cerr << "Error: Flag name must be started a uppercase letter. (Consider using \'" << static_cast<char>(std::toupper(parsed[i][1][0]))
+						<< parsed[i][1].substr(1) << "\')\n\tat " << filename << '(' << i+1 << ')' << std::endl;
 					exit(0);
 				}
 				preloaded_codes[current].temp_flags_record[parsed[i][1]] = preloaded_codes[current].code.size();
@@ -201,8 +207,8 @@ public:
 						// current_func.code.back().push_back({operation::create_int, temp_static_str_record[token]});
 					}
 					// 布尔值。
-					else if (token == "true") current_func.code.back().push_back({operation::CreateBoolean, true});
-					else if (token == "false") current_func.code.back().push_back({operation::CreateBoolean, false});
+					else if (token == "True") current_func.code.back().push_back({operation::CreateBoolean, true});
+					else if (token == "False") current_func.code.back().push_back({operation::CreateBoolean, false});
 					else if (builtin.find(token) != builtin.end()) {
 						current_func.code.back().push_back({builtin.at(token), 0});
 					} else if (vari_only_builtin.find(token) != vari_only_builtin.end()) {
@@ -235,7 +241,7 @@ public:
 									// 开头大写，作为函数解析
 									if (preloaded_codes.find(token) == preloaded_codes.end()) {
 										// 未找到函数则报错
-										cerr << "Cannot find function \'" << token << "\'. If you means a variable, consider using a lowercase letter started word." << "(Like \'"
+										cerr << "Cannot find function or flag \'" << token << "\'. If you means a variable, consider using a lowercase letter started word." << "(Like \'"
 											<< static_cast<char>(std::tolower(token[0])) << token.substr(1) << "\')\n\tat " << i.second.file_name << '(' << i.second.real_line_num[j] << ')';
 										exit(-1);
 									}

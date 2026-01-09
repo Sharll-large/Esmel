@@ -9,13 +9,13 @@ enum class Type {
 	UNDEFINED, INT, FLOAT, BOOLEAN, STRING, ARRAY
 };
 
-struct esmel_string {string v; bool gcflag;};
-struct esmel_array {vector<EsmelObject> v; bool gcflag;};
+struct esmel_string {string v; bool marked;};
+struct esmel_array {vector<EsmelObject> v; bool marked;};
 
 struct EsmelObject {
 	Type type;						// 类型标记
-	bool changeable = true; // 是否可变（用于常用对象缓存）
 	union {
+
 		long long int_v;
 		double float_v;
 		bool boolean_v;
@@ -23,10 +23,8 @@ struct EsmelObject {
 		esmel_array* array_v;
 	} value{};
 
-	EsmelObject(Type t = Type::UNDEFINED): type(t) {
-
-	}
-	~EsmelObject() {}
+	EsmelObject(Type t = Type::UNDEFINED): type(t) {}
+	~EsmelObject() = default;
 
 	std::string to_string() {
 		switch (type) {

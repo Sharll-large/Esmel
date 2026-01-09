@@ -4,11 +4,9 @@
 
 #pragma once
 
-#include <array>
 #include <cassert>
 #include <chrono>
 #include <iostream>
-#include <utility>
 #include <vector>
 #include <string>
 #include <unordered_map>
@@ -506,6 +504,14 @@ public:
 				break;
 			}
 			case operation::GetLength:
+				if (current_stack[size-1].type == Type::ARRAY) {
+					current_stack[size-1] = EsmelObject{static_cast<long long>(current_stack[size - 1].value.array_v->v.size())};
+				} else if (current_stack[size-1].type == Type::STRING) {
+					current_stack[size-1] = EsmelObject{static_cast<long long>(current_stack[size - 1].value.string_v->v.size())};
+				} else {
+					cerr << "Unsupported types for Len: " << current_stack[size-1].type_of();
+					error();
+				}
 				break;
 			case operation::Link: {
 				EsmelObject a1 = current_stack[size-1];

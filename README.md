@@ -27,12 +27,12 @@ Function Main
     Set startTime CurrentTime
 
     # Define a flag, so that we can repeat adding something.
-    flag start
+    Flag Start
         Add sum i
         Add i 1
-        end If Equal? i 100001
-        start   # Means Goto the flag `start`.
-    flag end
+        End If Equal? i 100001
+        Start   # Means Goto the flag `start`.
+    Flag End
 
     Set timeSum - CurrentTime startTime
 
@@ -40,6 +40,6 @@ Function Main
     Println sum
     Print   "Used time(ms): "
     Print   timeSum
-    # On Sharll's computer, it takes 5ms, which is 100% faster than Python.
+    # On Sharll's computer, it takes about 3~5ms, which is at about 224% speed of Python.
 ```
 

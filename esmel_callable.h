@@ -3,12 +3,15 @@
 #include <vector>
 #include <string>
 
+#include "esmel_object.h"
+
 enum class operation {
 	CreateInt,
 	CreateFloat,
 	CreateBoolean,
 	GetStaticStr,
 	CreateUndefined,
+	CreateType,
 	GetVar, SetVar,
 	Add, Sub, Mul, Div, Mod,
 	AddBy, SubBy, MulBy, DivBy, ModBy,
@@ -22,7 +25,17 @@ enum class operation {
 	ELess,
 	Greater,
 	EGreater,
-	NewArray, SetAt, GetAt, Append, GetLength, Link
+	NewArray, SetAt, GetAt, Append, GetLength, Link,
+};
+
+const std::unordered_map<std::string, Type> types = {
+	{"Int", Type::INT},
+	{"Float", Type::FLOAT},
+	{"Boolean", Type::BOOLEAN},
+	{"String", Type::STRING},
+	{"Array", Type::ARRAY},
+	{"UndefinedType", Type::UNDEFINED},
+	{"Type", Type::TYPE}
 };
 
 const std::unordered_map<std::string, operation> vari_only_builtin = {
@@ -51,7 +64,7 @@ const std::unordered_map<std::string, operation> builtin = {
 	{"/", operation::Sub},
 	{"%", operation::Mod},
 	{"CurrentTime", operation::GetTime},
-	{"Typeof", operation::Typeof},
+	{"TypeOf", operation::Typeof},
 	{"&&", operation::And},
 	{"||", operation::Or},
 	{"!", operation::Not},
@@ -77,6 +90,15 @@ const std::unordered_map<std::string, operation> builtin = {
 	{"Link", operation::Link},
 };
 
+const std::unordered_map<std::string, std::string> invalid = {
+	{"int", "Int"}, {"float", "Float"}, {"boolean", "Boolean"}, {"string", "String"},{"array", "Array"}, {"undefined", "Undefined"},
+	{"add", "Add"}, {"sub", "Sub"}, {"mul", "Mul"}, {"div", "Div"}, {"mod", "Mod"},
+	{"set", "Set"}, {"if", "If"}, {"return", "Return"},
+	{"goto", "a Jump, but you don't need this \'goto\' function before the flag name."},
+{"Goto", "a Jump, but you don't need this \'goto\' function before the flag name."},
+	{"flag", "Flag"}
+};
+
 struct esmel_op_code {
 	operation op;
 	int64_t data;
@@ -87,6 +109,7 @@ struct esmel_op_code {
 class esmel_function {
 public:
 	// 调试信息
+	std::string name;											// 函数名称
 	std::string file_name;								// 位于的文件名
 	std::vector<int> real_line_num;				// 真实行号
 	// 实际信息

@@ -1,32 +1,34 @@
 #pragma once
 
+#include <list>
 #include <string>
 #include <vector>
 
 struct EsmelObject;
 
 enum class Type {
-	UNDEFINED, INT, FLOAT, BOOLEAN, STRING, ARRAY
+	UNDEFINED, INT, FLOAT, BOOLEAN, STRING, ARRAY, TYPE
 };
 
-struct esmel_string {string v; bool marked;};
-struct esmel_array {vector<EsmelObject> v; bool marked;};
+struct esmel_string {std::string v; bool marked;};
+struct esmel_array {std::vector<EsmelObject> v; bool marked;};
+// struct esmel_map {unordered_map<EsmelObject, EsmelObject> v; list<EsmelObject> l; bool marked;};
 
 struct EsmelObject {
 	Type type;						// 类型标记
 	union {
-
 		long long int_v;
 		double float_v;
 		bool boolean_v;
 		esmel_string* string_v;
 		esmel_array* array_v;
+		Type type_v;
 	} value{};
 
-	EsmelObject(Type t = Type::UNDEFINED): type(t) {}
+	EsmelObject(): type(Type::UNDEFINED) {}
 	~EsmelObject() = default;
 
-	std::string to_string() {
+	[[nodiscard]] std::string to_string() const {
 		switch (type) {
 		case Type::INT: return std::to_string(value.int_v);
 		case Type::FLOAT: return std::to_string(value.float_v);
@@ -48,20 +50,23 @@ struct EsmelObject {
 		case Type::UNDEFINED: {
 			return "undefined";
 		}
+		case Type::TYPE: {
+			switch (value.type_v)
+			{
+			case Type::INT: return "<type:Int>";
+			case Type::FLOAT: return "<type:Float>";
+			case Type::BOOLEAN: return "<type:Boolean>";
+			case Type::STRING: return "<type:String>";
+			case Type::ARRAY: return "<type:Array>";
+			case Type::UNDEFINED: return "<type:Undefined>";
+			case Type::TYPE: return "<type:Type>";
+			}
+		}
 		}
 	}
 
-	std::string type_of()
-	{
-		switch (type)
-		{
-		case Type::INT: return "int";
-		case Type::FLOAT: return "float";
-		case Type::BOOLEAN: return "bool";
-		case Type::STRING: return "string";
-		case Type::ARRAY: return "array";
-		case Type::UNDEFINED: return "undefined";
-		}
+	std::string type_of() {
+		return EsmelObject(type).to_string();
 	}
 
 	bool equal_to(const EsmelObject& another) {
@@ -75,13 +80,14 @@ struct EsmelObject {
 		case Type::ARRAY:
 		{
 			if (value.array_v->v.size() != another.value.array_v->v.size()) return false;
-			for (int i = 0; i < value.array_v->v.size(); i++)
+			for (size_t i = 0; i < value.array_v->v.size(); i++)
 			{
 				if (!value.array_v->v.at(i).equal_to(another.value.array_v->v.at(i))) return false;
 			}
 			return true;
 		}
 		case Type::UNDEFINED: return true;
+		case Type::TYPE: return value.type_v == another.value.type_v;
 		}
 	}
 
@@ -115,5 +121,8 @@ struct EsmelObject {
 
 	EsmelObject(esmel_array* val) : type(Type::ARRAY) {
 		value.array_v = val;
+	}
+	EsmelObject(Type val) : type(Type::TYPE) {
+		value.type_v = val;
 	}
 };

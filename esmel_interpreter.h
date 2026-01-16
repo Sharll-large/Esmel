@@ -50,7 +50,7 @@ public:
 	}
 
 
-	void call(long long id)
+	void call(uint64_t id)
 	// 调用一个非内置的esmel函数。
 	{
 		auto nframe = frame(&functions[id]);
@@ -62,6 +62,7 @@ public:
 				std::cerr << "Error: needs " << nframe.function->arguments << " argument(s), but only " << i << " are given.";
 				error();
 			}
+			nframe.local_variables[i] = stack_frame.back().exec_stack.back();
 			stack_frame.back().exec_stack.pop_back();
 		}
 
@@ -69,7 +70,20 @@ public:
 
 		int& l = stack_frame.back().on_line;
 		while (l < stack_frame.back().function->code.size()) {
+			// std::cout << "Line " << l << ", func " << stack_frame.back().function->name << ":\t";
 			l = exec_line(stack_frame.back().function->code[l], l);
+		}
+		if (stack_frame.size() == 1) {
+			if (stack_frame.back().exec_stack.empty()) exit(0);
+			exit(stack_frame.back().exec_stack.back().value.int_v);
+		}
+		if (stack_frame.back().exec_stack.empty()) {
+			stack_frame.pop_back();
+			stack_frame.back().exec_stack.emplace_back();
+		} else {
+			auto t = stack_frame.back().exec_stack.back();
+			stack_frame.pop_back();
+			stack_frame.back().exec_stack.push_back(t);
 		}
 	}
 
@@ -79,7 +93,7 @@ public:
 		while (!stack_frame.empty())
 		{
 			auto st = stack_frame.back();
-			std::cerr << std::endl << "\tat " << st.function->file_name << '(' << st.function->real_line_num[st.on_line] << ")";
+			std::cerr << std::endl << "\tat " << st.function->name << '(' << st.function->file_name << ':' << st.function->real_line_num[st.on_line] << ")";
 			stack_frame.pop_back();
 		}
 		exit(EXIT_FAILURE);
@@ -103,6 +117,9 @@ public:
 				break;
 			case operation::CreateBoolean:
 				current_stack.emplace_back(static_cast<bool>(token.data));
+				break;
+			case operation::CreateType:
+				current_stack.emplace_back(static_cast<Type>(token.data));
 				break;
 			case operation::GetStaticStr:
 				current_stack.push_back(objects.createString((stack_frame.back().function->static_strs[token.data])));
@@ -346,9 +363,7 @@ public:
 			case operation::Copy:
 				break;
 			case operation::Typeof: {
-				EsmelObject a1 = current_stack[size-1];
-				current_stack[size-1] = objects.createString(a1.type_of());
-				current_stack.resize(size-1);
+				current_stack[size-1] = EsmelObject(current_stack[size-1].type);
 				break;
 			}
 			case operation::Equal: {
@@ -375,12 +390,7 @@ public:
 				break;
 			}
 			case operation::Return: {
-				const auto thing = current_stack.back();
-				auto ln = current_frame.function->code.size();
-				stack_frame.pop_back();
-				stack_frame.back().exec_stack.push_back(thing);
-				return ln+1;
-				break;
+				return current_frame.function->code.size()+1;
 			}
 			case operation::And: {
 				EsmelObject a2 = current_stack[size-2];
@@ -546,6 +556,7 @@ public:
 			}
 		}
 		stack_frame.back().exec_stack.clear();
+		// cout << "Return " << line+1 << endl;
 		return line + 1;
 	}
 };

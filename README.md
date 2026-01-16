@@ -1,6 +1,6 @@
 # Esmel
 ### Welcome to the language of Esmel !
-##### Current Version: 3.7pre1
+##### Current Version: 3.7pre4
 
 ---
 

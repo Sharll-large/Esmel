@@ -15,6 +15,7 @@ using namespace std;
 class esmel_compiler {
 	struct preloaded_code {
 		size_t id{};
+		string name;
 		string file_name;
 		size_t arguments{};
 		std::vector<int> real_line_num;
@@ -121,16 +122,16 @@ public:
 		auto parsed = splitLinesFromFile(filename);
 		// 目前的函数名
 		string current = main_func_name;
-		for (long long i = 0; i < parsed.size(); i++) {
+		for (uint64_t i = 0; i < parsed.size(); i++) {
 			if (parsed[i].empty()) continue;
 			if (parsed[i][0] == "Function") {
 				if (parsed[i].size() < 2) {
-					std::cerr << "Error: Empty function defined.\n\tat " << filename << '(' << i+1 << ')' << std::endl;
+					std::cerr << "Error: Empty function defined.\n\tat " << filename << ':' << i+1 << std::endl;
 					exit(0);
 				}
 				if (!std::isupper(parsed[i][1][0])) {
 					std::cerr << "Error: Function name must be started a uppercase letter. (Consider using \'" << static_cast<char>(std::toupper(parsed[i][1][0]))
-							<< parsed[i][1].substr(1) << "\')\n\tat " << filename << '(' << i+1 << ')' << std::endl;
+							<< parsed[i][1].substr(1) << "\')\n\tat " << filename << ':' << i+1 << std::endl;
 					exit(0);
 				}
 				auto t = preloaded_codes.find(parsed[i][1]);
@@ -144,12 +145,13 @@ public:
 					preloaded_codes[parsed[i][1]].real_line_num.clear();
 				}
 				current = parsed[i][1];
+				preloaded_codes[current].name = current;
 				preloaded_codes[current].file_name = filename;
 				preloaded_codes[current].arguments = parsed[i].size() - 2;
 				preloaded_codes[current].keywords.insert(current);
 				for (size_t j=2; j<parsed[i].size(); j++) {
 					if (preloaded_codes[current].keywords.contains(parsed[i][j])) {
-						std::cerr << "Error: Redefined keyword \'" << parsed[i][j] << "\'\n\tat file " << filename << '(' << i+1 << ')' << std::endl;
+						std::cerr << "Error: Redefined keyword \'" << parsed[i][j] << "\'\n\tat file " << filename << ':' << i+1 << std::endl;
 						exit(0);
 					}
 					preloaded_codes[current].temp_variable_record[parsed[i][j]] = preloaded_codes[current].temp_variable_record.size();
@@ -157,16 +159,16 @@ public:
 				}
 			} else if (parsed[i][0] == "Flag") {
 				if (parsed[i].size() != 2) {
-					std::cerr << "Error: Illegal flag defined.\n\tat file " << filename << '(' << i+1 << ')' << std::endl;
+					std::cerr << "Error: Illegal flag defined.\n\tat file " << filename << ':' << i+1 << std::endl;
 					exit(0);
 				}
 				if (preloaded_codes[current].keywords.contains(parsed[i][1])) {
-					std::cerr << "Error: Redefined keyword \'" << parsed[i][1] << "\'\n\tat " << filename << '(' << i+1 << ')' << std::endl;
+					std::cerr << "Error: Redefined keyword \'" << parsed[i][1] << "\'\n\tat " << filename << ':' << i+1 << std::endl;
 					exit(0);
 				}
 				if (!std::isupper(parsed[i][1][0])) {
 					std::cerr << "Error: Flag name must be started a uppercase letter. (Consider using \'" << static_cast<char>(std::toupper(parsed[i][1][0]))
-						<< parsed[i][1].substr(1) << "\')\n\tat " << filename << '(' << i+1 << ')' << std::endl;
+						<< parsed[i][1].substr(1) << "\')\n\tat " << filename << ':' << i+1 << std::endl;
 					exit(0);
 				}
 				preloaded_codes[current].temp_flags_record[parsed[i][1]] = preloaded_codes[current].code.size();
@@ -189,6 +191,7 @@ public:
 			esmel_function current_func = esmel_function();
 			current_func.real_line_num = i.second.real_line_num;
 			current_func.arguments = i.second.arguments;
+			current_func.name = i.second.name;
 			current_func.file_name = i.second.file_name;
 			current_func.variable_count = i.second.arguments;
 			for (size_t j = 0; j < i.second.code.size(); j++) {
@@ -204,21 +207,31 @@ public:
 							current_func.static_strs.push_back(token);
 						}
 						current_func.code.back().push_back({operation::GetStaticStr, temp_static_str_record[token]});
-						// current_func.code.back().push_back({operation::create_int, temp_static_str_record[token]});
 					}
+					// // 结构符（应该总是在行初遇到）
+					// else if (token == "While") {
+					// 	current_func.code.back().push_back({operation::Goto, -1});
+					// }
+					// else if (token == "End") {
+					//
+					// }
+
 					// 布尔值。
-					else if (token == "True") current_func.code.back().push_back({operation::CreateBoolean, true});
-					else if (token == "False") current_func.code.back().push_back({operation::CreateBoolean, false});
-					else if (builtin.find(token) != builtin.end()) {
+					else if (token == "True") current_func.code.back().emplace_back(operation::CreateBoolean, true);
+					else if (token == "False") current_func.code.back().emplace_back(operation::CreateBoolean, false);
+					else if (token == "Undefined") current_func.code.back().emplace_back(operation::CreateUndefined, 0);
+					else if (builtin.contains(token)) {
 						current_func.code.back().push_back({builtin.at(token), 0});
-					} else if (vari_only_builtin.find(token) != vari_only_builtin.end()) {
+					} else if (vari_only_builtin.contains(token)) {
 						// 特殊：Set操作
 						if (current_func.code.back().back().op != operation::GetVar) {
-							cerr << "Illegal " << token << ". This method can only be used on variables.\n\tat " << i.second.file_name << '(' << i.second.real_line_num[j] << ')';
+							cerr << "Illegal " << token << ". This method can only be used on variables.\n\tat " << i.second.file_name << ':' << i.second.real_line_num[j];
 							exit(-1);
 						}
 						current_func.code.back().back() = {vari_only_builtin.at(token), current_func.code.back().back().data};
-					} else {
+					} else if (types.contains(token)){
+						current_func.code.back().emplace_back(operation::CreateType, std::bit_cast<int32_t>(types.at(token)));
+					}else {
 						// 尝试解析为整数
 						long long llvalue;
 						auto [ptr, ec] = std::from_chars(token.data(), token.data()+token.size(), llvalue);
@@ -242,26 +255,30 @@ public:
 									if (preloaded_codes.find(token) == preloaded_codes.end()) {
 										// 未找到函数则报错
 										cerr << "Cannot find function or flag \'" << token << "\'. If you means a variable, consider using a lowercase letter started word." << "(Like \'"
-											<< static_cast<char>(std::tolower(token[0])) << token.substr(1) << "\')\n\tat " << i.second.file_name << '(' << i.second.real_line_num[j] << ')';
+											<< static_cast<char>(std::tolower(token[0])) << token.substr(1) << "\')\n\tat " << i.second.file_name << ':' << i.second.real_line_num[j];
 										exit(-1);
 									}
 									// 如果是Esmel函数
 									current_func.code.back().push_back({operation::Call, static_cast<int64_t>(preloaded_codes[token].id)});
 								} else {
 									// 否则判定为运行时变量。
-									if (temp_variable_record.find(token) == temp_variable_record.end()) {
-										// 第一次遇见此变量，则为此变量分配一个ID。
-										temp_variable_record[token] = temp_variable_record.size();
-										current_func.variable_count += 1;
+									if (invalid.contains(token)) {
+										cerr << "\'" << token << "\' is an invalid variable name. Perhaps you mean " << invalid.at(token) << std::endl;
+										cerr << "\tat " << i.second.file_name << ':' << i.second.real_line_num[j];
+									} else {
+										if (temp_variable_record.find(token) == temp_variable_record.end()) {
+											// 第一次遇见此变量，则为此变量分配一个ID。
+											temp_variable_record[token] = temp_variable_record.size();
+											current_func.variable_count += 1;
+										}
+										current_func.code.back().push_back({operation::GetVar, temp_variable_record[token]});
 									}
-									current_func.code.back().push_back({operation::GetVar, temp_variable_record[token]});
 								}
 							}
 						}
 					}
 				}
 			}
-			if (i.first != main_func_name) current_func.code.push_back({{operation::Return}, {operation::CreateUndefined}});
 			esmel_functions[i.second.id] = current_func;
 		}
 	}

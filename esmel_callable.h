@@ -115,6 +115,5 @@ public:
 	// 实际信息
 	size_t arguments;		// 参数长度
 	size_t variable_count;
-	std::vector<std::string> static_strs; // 字符串字面量
 	std::vector<std::vector<esmel_op_code>> code;				// Esmel代码
 };

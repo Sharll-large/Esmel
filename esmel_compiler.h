@@ -26,7 +26,9 @@ class esmel_compiler {
 	};
 public:
 	vector<esmel_function> esmel_functions;
-	unordered_map<string, preloaded_code> preloaded_codes ;
+	unordered_map<string, preloaded_code> preloaded_codes;
+	std::unordered_map<std::string, int64_t> static_strs_record;
+	std::vector<std::string> static_strs;
 
 	esmel_compiler() {
 		preloaded_codes = {
@@ -185,7 +187,6 @@ public:
 		// 编译
 		esmel_functions = vector<esmel_function>(preloaded_codes.size());
 		for (const auto& i: preloaded_codes) {
-			unordered_map<string, long long> temp_static_str_record;
 			unordered_map<string, long long> temp_variable_record = i.second.temp_variable_record;
 			unordered_map<string, long long> temp_flags_record = i.second.temp_flags_record;
 			esmel_function current_func = esmel_function();
@@ -201,12 +202,11 @@ public:
 					if (token.length() >= 2 && token[0] == '\"' && token[token.size()-1] == '\"') {
 						// 字符串。
 						token = token.substr(1, token.length() - 2);
-						if (temp_static_str_record.find(token) == temp_static_str_record.end()) {
+						if (static_strs_record.find(token) == static_strs_record.end()) {
 							// 添加字符串字面量。
-							temp_static_str_record[token] = temp_static_str_record.size();
-							current_func.static_strs.push_back(token);
+							static_strs_record[token] = static_strs_record.size();
 						}
-						current_func.code.back().push_back({operation::GetStaticStr, temp_static_str_record[token]});
+						current_func.code.back().push_back({operation::GetStaticStr, static_strs_record[token]});
 					}
 					// // 结构符（应该总是在行初遇到）
 					// else if (token == "While") {
@@ -280,6 +280,10 @@ public:
 				}
 			}
 			esmel_functions[i.second.id] = current_func;
+		}
+		static_strs.resize(static_strs_record.size());
+		for (const auto& [i, j] : static_strs_record) {
+			static_strs[j] = i;
 		}
 	}
 };

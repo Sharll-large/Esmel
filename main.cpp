@@ -38,6 +38,7 @@ int main(int argc, char* argv[])
 
 		EsmelInterpreter esm;
 		esm.functions = e->esmel_functions;
+		esm.static_str = e->static_strs;
 
 		delete e;
 
@@ -57,23 +58,23 @@ int main(int argc, char* argv[])
 
 			EsmelByteCode::write(&e.esmel_functions, &f);
 
-			for (auto i: e.esmel_functions) {
-				cout << "Function(" << i.arguments << ')' << endl;
-
-				std::cout << "\tstatic_strs: ";
-
-				for (auto j: i.static_strs) std::cout << j << ' ';
-
-				std::cout << std::endl << "\tbyte_code: " << endl;
-
-				for (auto j : i.code) {
-					for (auto k: j) {
-						printf("\t\t%d,%lld", k.op, k.data);
-					}
-					std::cout << std::endl;
-				}
-
-			}
+			// for (auto i: e.esmel_functions) {
+			// 	cout << "Function(" << i.arguments << ')' << endl;
+			//
+			// 	std::cout << "\tstatic_strs: ";
+			//
+			// 	for (auto j: i.static_strs) std::cout << j << ' ';
+			//
+			// 	std::cout << std::endl << "\tbyte_code: " << endl;
+			//
+			// 	for (auto j : i.code) {
+			// 		for (auto k: j) {
+			// 			printf("\t\t%d,%lld", k.op, k.data);
+			// 		}
+			// 		std::cout << std::endl;
+			// 	}
+			//
+			// }
 		}
 	}
 	return 0;

@@ -39,6 +39,7 @@ class EsmelInterpreter
 public:
 	EsmelObjectPool objects; // 对象池
 	vector<esmel_function> functions; // 函数池
+	vector<std::string> static_str;		// 字符串字面量池
 	std::vector<frame> stack_frame; // 栈帧（顶部表示当前的栈帧，存储局部变量信息。）
 
 	void gc() {
@@ -102,7 +103,6 @@ public:
 	int exec_line(vector<esmel_op_code> &code, int line)
 	// 执行一段esmel代码
 	{
-
 		for (auto token: code)
 		{
 			frame& current_frame = stack_frame.back();
@@ -122,7 +122,7 @@ public:
 				current_stack.emplace_back(static_cast<Type>(token.data));
 				break;
 			case operation::GetStaticStr:
-				current_stack.push_back(objects.createString((stack_frame.back().function->static_strs[token.data])));
+				current_stack.push_back(objects.createString(static_str[token.data]));
 				break;
 			case operation::CreateUndefined:
 				current_stack.emplace_back();

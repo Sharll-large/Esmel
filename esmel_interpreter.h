@@ -28,7 +28,7 @@ public:
 	esmel_function* function;
 	std::vector<EsmelObject> local_variables; // 变量存储，id为索引
 	std::vector<EsmelObject> exec_stack; // 执行栈
-	int on_line;
+	uint64_t on_line;
 	frame(esmel_function* f): function(f), on_line(0) {
 		local_variables.resize(f->variable_count, {});
 	}
@@ -51,7 +51,7 @@ public:
 	}
 
 
-	void call(uint64_t id)
+	void call(const uint64_t id)
 	// 调用一个非内置的esmel函数。
 	{
 		auto nframe = frame(&functions[id]);
@@ -69,7 +69,7 @@ public:
 
 		stack_frame.push_back(nframe);
 
-		int& l = stack_frame.back().on_line;
+		uint64_t& l = stack_frame.back().on_line;
 		while (l < stack_frame.back().function->code.size()) {
 			// std::cout << "Line " << l << ", func " << stack_frame.back().function->name << ":\t";
 			l = exec_line(stack_frame.back().function->code[l], l);
@@ -100,39 +100,39 @@ public:
 		exit(EXIT_FAILURE);
 	}
 
-	int exec_line(vector<esmel_op_code> &code, int line)
+	uint64_t exec_line(vector<esmel_op_code> &code, uint64_t line)
 	// 执行一段esmel代码
 	{
-		for (auto token: code)
+		for (auto [op, data]: code)
 		{
 			frame& current_frame = stack_frame.back();
 			vector<EsmelObject>& current_stack = current_frame.exec_stack;
 			size_t size = current_stack.size();
-			switch (token.op) {
+			switch (op) {
 			case operation::CreateInt:
-				current_stack.emplace_back(token.data);
+				current_stack.emplace_back(std::bit_cast<int64_t>(data));
 				break;
 			case operation::CreateFloat:
-				current_stack.emplace_back(std::bit_cast<double>(token.data));
+				current_stack.emplace_back(std::bit_cast<double>(data));
 				break;
 			case operation::CreateBoolean:
-				current_stack.emplace_back(static_cast<bool>(token.data));
+				current_stack.emplace_back(static_cast<bool>(data));
 				break;
 			case operation::CreateType:
-				current_stack.emplace_back(static_cast<Type>(token.data));
+				current_stack.emplace_back(static_cast<Type>(data));
 				break;
 			case operation::GetStaticStr:
-				current_stack.push_back(objects.createString(static_str[token.data]));
+				current_stack.push_back(objects.createString(static_str[data]));
 				break;
 			case operation::CreateUndefined:
 				current_stack.emplace_back();
 				break;
 			case operation::GetVar: {
-				current_stack.push_back(current_frame.local_variables[token.data]);
+				current_stack.push_back(current_frame.local_variables[data]);
 				break;
 			}
 			case operation::SetVar: {
-				current_frame.local_variables[token.data] = current_stack[size-1];
+				current_frame.local_variables[data] = current_stack[size-1];
 				current_stack.resize(size-1);
 				break;
 			}
@@ -249,12 +249,12 @@ public:
 				current_stack.pop_back();
 				break;
 			case operation::Goto:
-				return token.data;
+				return data;
 			case operation::Call:
-				call(token.data);
+				call(data);
 				break;
 			case operation::AddBy: {
-				auto& origin = current_frame.local_variables[token.data];
+				auto& origin = current_frame.local_variables[data];
 				auto a = current_stack[size-1];
 				current_stack.resize(size-1);
 				if (origin.type != a.type) {
@@ -276,7 +276,7 @@ public:
 				break;
 			}
 			case operation::SubBy: {
-				auto& origin = current_frame.local_variables[token.data];
+				auto& origin = current_frame.local_variables[data];
 				auto a = current_stack[size-1];
 				current_stack.resize(size-1);
 				if (origin.type != a.type) {
@@ -298,7 +298,7 @@ public:
 				break;
 			}
 			case operation::MulBy: {
-				auto& origin = current_frame.local_variables[token.data];
+				auto& origin = current_frame.local_variables[data];
 				auto a = current_stack[size-1];
 				current_stack.resize(size-1);
 				if (origin.type != a.type) {
@@ -320,7 +320,7 @@ public:
 				break;
 			}
 			case operation::DivBy: {
-				auto& origin = current_frame.local_variables[token.data];
+				auto& origin = current_frame.local_variables[data];
 				auto a = current_stack[size-1];
 				current_stack.resize(size-1);
 				if (origin.type != a.type) {
@@ -342,7 +342,7 @@ public:
 				break;
 			}
 			case operation::ModBy: {
-				auto& origin = current_frame.local_variables[token.data];
+				auto& origin = current_frame.local_variables[data];
 				auto a = current_stack[size-1];
 				current_stack.resize(size-1);
 				if (origin.type != a.type) {
@@ -455,7 +455,7 @@ public:
 			case operation::EGreater:
 				break;
 			case operation::Input: {
-				auto o = current_frame.local_variables[token.data] = objects.createString("");
+				auto o = current_frame.local_variables[data] = objects.createString("");
 				std::getline(std::cin, o.value.string_v->v);
 				break;
 			}

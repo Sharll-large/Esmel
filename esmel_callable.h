@@ -101,19 +101,19 @@ const std::unordered_map<std::string, std::string> invalid = {
 
 struct esmel_op_code {
 	operation op;
-	int64_t data;
+	uint64_t data;
 };
 
 
 
 class esmel_function {
 public:
+	// 实际信息
+	uint64_t arguments;		// 参数长度
+	uint64_t variable_count;
+	std::vector<std::vector<esmel_op_code>> code;				// Esmel代码
 	// 调试信息
 	std::string name;											// 函数名称
 	std::string file_name;								// 位于的文件名
-	std::vector<int> real_line_num;				// 真实行号
-	// 实际信息
-	size_t arguments;		// 参数长度
-	size_t variable_count;
-	std::vector<std::vector<esmel_op_code>> code;				// Esmel代码
+	std::vector<uint64_t> real_line_num;				// 真实行号
 };

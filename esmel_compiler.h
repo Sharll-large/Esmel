@@ -18,16 +18,16 @@ class esmel_compiler {
 		string name;
 		string file_name;
 		size_t arguments{};
-		std::vector<int> real_line_num;
-		unordered_map<string, long long> temp_variable_record;
-		unordered_map<string, long long> temp_flags_record;
+		std::vector<uint64_t> real_line_num;
+		unordered_map<string, uint64_t> temp_variable_record;
+		unordered_map<string, uint64_t> temp_flags_record;
 		std::vector<std::vector<std::string>> code;
 		std::unordered_set<std::string> keywords;
 	};
 public:
 	vector<esmel_function> esmel_functions;
 	unordered_map<string, preloaded_code> preloaded_codes;
-	std::unordered_map<std::string, int64_t> static_strs_record;
+	std::unordered_map<std::string, uint64_t> static_strs_record;
 	std::vector<std::string> static_strs;
 
 	esmel_compiler() {
@@ -187,8 +187,8 @@ public:
 		// 编译
 		esmel_functions = vector<esmel_function>(preloaded_codes.size());
 		for (const auto& i: preloaded_codes) {
-			unordered_map<string, long long> temp_variable_record = i.second.temp_variable_record;
-			unordered_map<string, long long> temp_flags_record = i.second.temp_flags_record;
+			unordered_map<string, uint64_t> temp_variable_record = i.second.temp_variable_record;
+			unordered_map<string, uint64_t> temp_flags_record = i.second.temp_flags_record;
 			esmel_function current_func = esmel_function();
 			current_func.real_line_num = i.second.real_line_num;
 			current_func.arguments = i.second.arguments;
@@ -236,14 +236,14 @@ public:
 						long long llvalue;
 						auto [ptr, ec] = std::from_chars(token.data(), token.data()+token.size(), llvalue);
 						if (ec == std::errc() && ptr == token.data() + token.size()) {
-							current_func.code.back().push_back({operation::CreateInt, llvalue});
+							current_func.code.back().push_back({operation::CreateInt, std::bit_cast<uint64_t>(llvalue)});
 						} else {
 							// 浮点数
 							double dbvalue;
 							auto [ptr2, ec2] = std::from_chars(token.data(), token.data()+token.size(), dbvalue);
 							if (ec2 == std::errc() && ptr2 == token.data() + token.size()) {
 								// std::cout << "good " << dbvalue;
-								current_func.code.back().push_back({operation::CreateFloat, std::bit_cast<int64_t>(dbvalue)});
+								current_func.code.back().push_back({operation::CreateFloat, std::bit_cast<uint64_t>(dbvalue)});
 							}
 							// 运行时变量 或 flag
 							else if (temp_flags_record.find(token) != temp_flags_record.end()) {
@@ -259,7 +259,7 @@ public:
 										exit(-1);
 									}
 									// 如果是Esmel函数
-									current_func.code.back().push_back({operation::Call, static_cast<int64_t>(preloaded_codes[token].id)});
+									current_func.code.back().push_back({operation::Call, preloaded_codes[token].id});
 								} else {
 									// 否则判定为运行时变量。
 									if (invalid.contains(token)) {

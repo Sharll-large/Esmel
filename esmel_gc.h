@@ -2,9 +2,6 @@
 
 #include <string>
 #include <vector>
-#include <unordered_set>
-#include <functional>
-#include <iostream>
 
 #include "esmel_object.h"
 
@@ -29,7 +26,7 @@ public:
     }
 
     // 递归标记
-    void mark(const EsmelObject& obj) {
+    static void mark(const EsmelObject& obj) {
         switch (obj.type) {
         case Type::STRING:
             obj.value.string_v->marked = true;
@@ -49,8 +46,8 @@ public:
 
     // 清除未标记对象
     void gc() {
-        size_t deleted = 0;
-        for (long long i = 0; i < all_strings.size(); i++) {
+        uint64_t deleted = 0;
+        for (uint64_t i = 0; i < all_strings.size(); i++) {
             if (all_strings[i]->marked) {
                 all_strings[i]->marked = false;
                 all_strings[i-deleted] = all_strings[i];
@@ -61,7 +58,7 @@ public:
         }
         all_strings.resize(all_strings.size() - deleted);
         deleted = 0;
-        for (long long i = 0; i < all_arrays.size(); i++) {
+        for (uint64_t i = 0; i < all_arrays.size(); i++) {
             if (all_arrays[i]->marked) {
                 all_arrays[i]->marked = false;
                 all_arrays[i-deleted] = all_arrays[i];

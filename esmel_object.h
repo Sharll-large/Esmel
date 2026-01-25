@@ -17,7 +17,7 @@ struct esmel_array {std::vector<EsmelObject> v; bool marked;};
 struct EsmelObject {
 	Type type;						// 类型标记
 	union {
-		long long int_v;
+		int64_t int_v;
 		double float_v;
 		bool boolean_v;
 		esmel_string* string_v;
@@ -62,14 +62,17 @@ struct EsmelObject {
 			case Type::TYPE: return "<type:Type>";
 			}
 		}
+
+		default:
+			return "Unknown";
 		}
 	}
 
-	std::string type_of() {
+	[[nodiscard]] std::string type_of() const {
 		return EsmelObject(type).to_string();
 	}
 
-	bool equal_to(const EsmelObject& another) {
+	[[nodiscard]] bool equal_to(const EsmelObject& another) const {
 		if (type != another.type) return false;
 		switch (type)
 		{
@@ -89,9 +92,10 @@ struct EsmelObject {
 		case Type::UNDEFINED: return true;
 		case Type::TYPE: return value.type_v == another.value.type_v;
 		}
+		return false;
 	}
 
-	bool is_same(const EsmelObject& another) {
+	[[nodiscard]] bool is_same(const EsmelObject& another) const {
 		if (type != another.type) return false;
 
 		switch (type) {
@@ -103,7 +107,7 @@ struct EsmelObject {
 		}
 	}
 
-	EsmelObject(long long val) : type(Type::INT) {
+	EsmelObject(int64_t val) : type(Type::INT) {
 		value.int_v = val;
 	}
 

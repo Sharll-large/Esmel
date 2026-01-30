@@ -5,7 +5,7 @@
 
 #include "esmel_object.h"
 
-enum class operation {
+enum class operation: uint32_t{
 	CreateInt,
 	CreateFloat,
 	CreateBoolean,
@@ -26,6 +26,8 @@ enum class operation {
 	Greater,
 	EGreater,
 	NewArray, SetAt, GetAt, Append, GetLength, Link,
+
+	EndEnum // 仅用于标识最大枚举值！
 };
 
 const std::unordered_map<std::string, Type> types = {
@@ -94,9 +96,9 @@ const std::unordered_map<std::string, std::string> invalid = {
 	{"int", "Int"}, {"float", "Float"}, {"boolean", "Boolean"}, {"string", "String"},{"array", "Array"}, {"undefined", "Undefined"},
 	{"add", "Add"}, {"sub", "Sub"}, {"mul", "Mul"}, {"div", "Div"}, {"mod", "Mod"},
 	{"set", "Set"}, {"if", "If"}, {"return", "Return"},
-	{"goto", "a Jump, but you don't need this \'goto\' function before the flag name."},
-{"Goto", "a Jump, but you don't need this \'goto\' function before the flag name."},
-	{"flag", "Flag"}
+	{"goto", "a Jump, but you don't need this \'goto\' function before the label name."},
+{"Goto", "a Jump, but you don't need this \'goto\' function before the label name."},
+	{"label", "Label"}
 };
 
 struct esmel_op_code {

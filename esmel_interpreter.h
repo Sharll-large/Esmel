@@ -20,7 +20,7 @@
 #include "esmel_gc.h"
 
 using std::vector, std::string, std::unordered_map, std::map, std::stack, std::shared_ptr,
-		std::unordered_set;
+		std::unordered_set, std::cerr;
 
 class frame // 栈帧
 {
@@ -108,6 +108,7 @@ public:
 			frame& current_frame = stack_frame.back();
 			vector<EsmelObject>& current_stack = current_frame.exec_stack;
 			size_t size = current_stack.size();
+			// cout << builtin_functions[0](&current_stack, this, &current_frame, data, line);
 			switch (op) {
 			case operation::CreateInt:
 				current_stack.emplace_back(std::bit_cast<int64_t>(data));

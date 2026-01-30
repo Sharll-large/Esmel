@@ -20,7 +20,7 @@ class esmel_compiler {
 		size_t arguments{};
 		std::vector<uint64_t> real_line_num;
 		unordered_map<string, uint64_t> temp_variable_record;
-		unordered_map<string, uint64_t> temp_flags_record;
+		unordered_map<string, uint64_t> temp_labels_record;
 		std::vector<std::vector<std::string>> code;
 		std::unordered_set<std::string> keywords;
 	};
@@ -143,7 +143,7 @@ public:
 				} else {
 					preloaded_codes[parsed[i][1]].temp_variable_record.clear();
 					preloaded_codes[parsed[i][1]].code.clear();
-					preloaded_codes[parsed[i][1]].temp_flags_record.clear();
+					preloaded_codes[parsed[i][1]].temp_labels_record.clear();
 					preloaded_codes[parsed[i][1]].real_line_num.clear();
 				}
 				current = parsed[i][1];
@@ -159,9 +159,9 @@ public:
 					preloaded_codes[current].temp_variable_record[parsed[i][j]] = preloaded_codes[current].temp_variable_record.size();
 					preloaded_codes[current].keywords.insert(parsed[i][j]);
 				}
-			} else if (parsed[i][0] == "Flag") {
+			} else if (parsed[i][0] == "Label") {
 				if (parsed[i].size() != 2) {
-					std::cerr << "Error: Illegal flag defined.\n\tat file " << filename << ':' << i+1 << std::endl;
+					std::cerr << "Error: Illegal label defined.\n\tat file " << filename << ':' << i+1 << std::endl;
 					exit(0);
 				}
 				if (preloaded_codes[current].keywords.contains(parsed[i][1])) {
@@ -169,11 +169,11 @@ public:
 					exit(0);
 				}
 				if (!std::isupper(parsed[i][1][0])) {
-					std::cerr << "Error: Flag name must be started a uppercase letter. (Consider using \'" << static_cast<char>(std::toupper(parsed[i][1][0]))
+					std::cerr << "Error: Label name must be started a uppercase letter. (Consider using \'" << static_cast<char>(std::toupper(parsed[i][1][0]))
 						<< parsed[i][1].substr(1) << "\')\n\tat " << filename << ':' << i+1 << std::endl;
 					exit(0);
 				}
-				preloaded_codes[current].temp_flags_record[parsed[i][1]] = preloaded_codes[current].code.size();
+				preloaded_codes[current].temp_labels_record[parsed[i][1]] = preloaded_codes[current].code.size();
 				preloaded_codes[current].keywords.insert(parsed[i][1]);
 			} else {
 				preloaded_codes[current].code.push_back(parsed[i]);
@@ -188,7 +188,7 @@ public:
 		esmel_functions = vector<esmel_function>(preloaded_codes.size());
 		for (const auto& i: preloaded_codes) {
 			unordered_map<string, uint64_t> temp_variable_record = i.second.temp_variable_record;
-			unordered_map<string, uint64_t> temp_flags_record = i.second.temp_flags_record;
+			unordered_map<string, uint64_t> temp_labels_record = i.second.temp_labels_record;
 			esmel_function current_func = esmel_function();
 			current_func.real_line_num = i.second.real_line_num;
 			current_func.arguments = i.second.arguments;
@@ -245,16 +245,16 @@ public:
 								// std::cout << "good " << dbvalue;
 								current_func.code.back().push_back({operation::CreateFloat, std::bit_cast<uint64_t>(dbvalue)});
 							}
-							// 运行时变量 或 flag
-							else if (temp_flags_record.find(token) != temp_flags_record.end()) {
-								// 如果这是一个flag。
-								current_func.code.back().push_back({operation::Goto, temp_flags_record.at(token)});
+							// 运行时变量 或 label
+							else if (temp_labels_record.find(token) != temp_labels_record.end()) {
+								// 如果这是一个label。
+								current_func.code.back().push_back({operation::Goto, temp_labels_record.at(token)});
 							} else {
 								if (std::isupper(token[0])) {
 									// 开头大写，作为函数解析
 									if (preloaded_codes.find(token) == preloaded_codes.end()) {
 										// 未找到函数则报错
-										cerr << "Cannot find function or flag \'" << token << "\'. If you means a variable, consider using a lowercase letter started word." << "(Like \'"
+										cerr << "Cannot find function or label \'" << token << "\'. If you means a variable, consider using a lowercase letter started word." << "(Like \'"
 											<< static_cast<char>(std::tolower(token[0])) << token.substr(1) << "\')\n\tat " << i.second.file_name << ':' << i.second.real_line_num[j];
 										exit(-1);
 									}

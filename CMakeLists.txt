@@ -8,8 +8,7 @@ add_executable(esmel main.cpp
         esmel_gc.h
         esmel_interpreter.h
         esmel_callable.h
-        esmel_compiler.h
-        esmel_bytecode.h)
+        esmel_compiler.h)
 
 target_compile_options(esmel PRIVATE
         -O3

@@ -6,7 +6,6 @@
 #include <stack>
 #include <unordered_set>
 
-#include "esmel_bytecode.h"
 #include "esmel_compiler.h"
 #include "esmel_interpreter.h"
 
@@ -20,7 +19,7 @@ int main(int argc, char* argv[])
 		std::cout << 	""
 	"      *          Welcome to the Esmel Language!\n"
 	"     ***         Author: Sharll\n"
-	"   *******       Version: v3.7-official-pre-release-4\n"
+	"   *******       Version: v3.7-official-pre-release-5\n"
 	"*************    To run a program directly, use `esmel your_esmel_code.esm`\n"
 	"   *******       To compile a program,      use `esmel compile your_esmel_code.esm`\n"
 	"     ***         Hope you'll have a pleasant journey!\n"
@@ -44,43 +43,5 @@ int main(int argc, char* argv[])
 
 		esm.call(0);
 	}
-	if (argc == 3) {
-		if (std::string(argv[1]) == "compile") {
-			cout << "Compiling " << argv[2] << "..." << endl;
-			string filename = argv[2];				// xxx.esm
-			string target = filename + "el";	// xxx.esmel
-
-			std::ofstream f(target, std::ios::binary | std::ios::out);
-
-			auto e = esmel_compiler();
-			e.add_target(filename);
-			e.compile();
-
-			EsmelByteCode::write(&e.esmel_functions, &f);
-
-			// for (auto i: e.esmel_functions) {
-			// 	cout << "Function(" << i.arguments << ')' << endl;
-			//
-			// 	std::cout << "\tstatic_strs: ";
-			//
-			// 	for (auto j: i.static_strs) std::cout << j << ' ';
-			//
-			// 	std::cout << std::endl << "\tbyte_code: " << endl;
-			//
-			// 	for (auto j : i.code) {
-			// 		for (auto k: j) {
-			// 			printf("\t\t%d,%lld", k.op, k.data);
-			// 		}
-			// 		std::cout << std::endl;
-			// 	}
-			//
-			// }
-		}
-	}
-	return 0;
-	//
-
-
-
 	return 0;
 }

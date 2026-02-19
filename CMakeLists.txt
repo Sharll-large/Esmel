@@ -11,7 +11,7 @@ add_executable(esmel main.cpp
         esmel_compiler.h)
 
 target_compile_options(esmel PRIVATE
-        -O3
+        -O2
         -flto
         -fno-exceptions
         -fno-rtti

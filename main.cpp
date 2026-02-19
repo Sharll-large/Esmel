@@ -15,11 +15,12 @@ using std::vector, std::string, std::unordered_map, std::map, std::stack, std::n
 
 int main(int argc, char* argv[])
 {
+	ios_base::sync_with_stdio(false);
 	if (argc == 1) {
 		std::cout << 	""
 	"      *          Welcome to the Esmel Language!\n"
 	"     ***         Author: Sharll\n"
-	"   *******       Version: v3.7-official-pre-release-5\n"
+	"   *******       Version: v3.8-official-pre-release-1\n"
 	"*************    To run a program directly, use `esmel your_esmel_code.esm`\n"
 	"   *******       To compile a program,      use `esmel compile your_esmel_code.esm`\n"
 	"     ***         Hope you'll have a pleasant journey!\n"

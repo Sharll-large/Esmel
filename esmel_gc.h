@@ -33,6 +33,7 @@ public:
             break;
         case Type::ARRAY: {
             // 数组则递归标记
+            if (obj.value.array_v->marked) return;
             obj.value.array_v->marked = true;
             for (const auto& elem: obj.value.array_v->v) {
                 mark(elem);

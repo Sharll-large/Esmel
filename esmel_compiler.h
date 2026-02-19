@@ -151,7 +151,7 @@ public:
 				preloaded_codes[current].file_name = filename;
 				preloaded_codes[current].arguments = parsed[i].size() - 2;
 				preloaded_codes[current].keywords.insert(current);
-				for (size_t j=2; j<parsed[i].size(); j++) {
+				for (size_t j=parsed[i].size()-1; j>=2; j--) {
 					if (preloaded_codes[current].keywords.contains(parsed[i][j])) {
 						std::cerr << "Error: Redefined keyword \'" << parsed[i][j] << "\'\n\tat file " << filename << ':' << i+1 << std::endl;
 						exit(0);

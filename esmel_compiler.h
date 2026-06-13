@@ -6,6 +6,7 @@
 #include "esmel_callable.h"
 #include <iostream>
 #include <fstream>
+#include "fast_float.h"
 
 #define main_func_name "Main"
 
@@ -208,14 +209,6 @@ public:
 						}
 						current_func.code.back().push_back({operation::GetStaticStr, static_strs_record[token]});
 					}
-					// // 结构符（应该总是在行初遇到）
-					// else if (token == "While") {
-					// 	current_func.code.back().push_back({operation::Goto, -1});
-					// }
-					// else if (token == "End") {
-					//
-					// }
-
 					// 布尔值。
 					else if (token == "True") current_func.code.back().emplace_back(operation::CreateBoolean, true);
 					else if (token == "False") current_func.code.back().emplace_back(operation::CreateBoolean, false);
@@ -234,13 +227,13 @@ public:
 					}else {
 						// 尝试解析为整数
 						long long llvalue;
-						auto [ptr, ec] = std::from_chars(token.data(), token.data()+token.size(), llvalue);
+						auto [ptr, ec] = fast_float::from_chars(token.data(), token.data()+token.size(), llvalue);
 						if (ec == std::errc() && ptr == token.data() + token.size()) {
 							current_func.code.back().push_back({operation::CreateInt, std::bit_cast<uint64_t>(llvalue)});
 						} else {
 							// 浮点数
 							double dbvalue;
-							auto [ptr2, ec2] = std::from_chars(token.data(), token.data()+token.size(), dbvalue);
+							auto [ptr2, ec2] = fast_float::from_chars(token.data(), token.data()+token.size(), dbvalue);
 							if (ec2 == std::errc() && ptr2 == token.data() + token.size()) {
 								// std::cout << "good " << dbvalue;
 								current_func.code.back().push_back({operation::CreateFloat, std::bit_cast<uint64_t>(dbvalue)});

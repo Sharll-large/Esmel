@@ -1,6 +1,6 @@
 # Esmel
 ### Welcome to the language of Esmel !
-##### Current Version: 3.7pre4
+##### Current Version: 3.8pre2
 
 ---
 
@@ -27,12 +27,12 @@ Function Main
     Set startTime CurrentTime
 
     # Define a flag, so that we can repeat adding something.
-    Flag Start
+    Label Start
         Add sum i
         Add i 1
         End If Equal? i 100001
         Start   # Means Goto the flag `start`.
-    Flag End
+    Label End
 
     Set timeSum - CurrentTime startTime
 

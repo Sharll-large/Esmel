@@ -20,7 +20,7 @@ int main(int argc, char* argv[])
 		std::cout << 	""
 	"      *          Welcome to the Esmel Language!\n"
 	"     ***         Author: Sharll\n"
-	"   *******       Version: v3.8-official-pre-release-1\n"
+	"   *******       Version: v3.8-official-pre-release-2\n"
 	"*************    To run a program directly, use `esmel your_esmel_code.esm`\n"
 	"   *******       To compile a program,      use `esmel compile your_esmel_code.esm`\n"
 	"     ***         Hope you'll have a pleasant journey!\n"

@@ -151,7 +151,7 @@ public:
 				const auto a2 = stack_frame.back().top-2;
 				stack_frame.back().top -= 1;
 				if (a1->type != a2->type) {
-					cerr << "Unsupported type for Add: " << a1->type_of() << " and " << a2->type_of();
+					cerr << "Unsupported type for Sub: " << a1->type_of() << " and " << a2->type_of();
 					error();
 				}
 				switch (a1->type) {
@@ -162,7 +162,7 @@ public:
 					*a2 = a2->value.float_v - a1->value.float_v;
 					break;
 				default: {
-					cerr << "Unsupported type for Add: " << a1->type_of() << " and " << a2->type_of();
+					cerr << "Unsupported type for Sub: " << a1->type_of() << " and " << a2->type_of();
 					error();
 				}
 				}
@@ -173,7 +173,7 @@ public:
 				const auto a2 = stack_frame.back().top-2;
 				stack_frame.back().top -= 1;
 				if (a1->type != a2->type) {
-					cerr << "Unsupported type for Add: " << a1->type_of() << " and " << a2->type_of();
+					cerr << "Unsupported type for Mul: " << a1->type_of() << " and " << a2->type_of();
 					error();
 				}
 				switch (a1->type) {
@@ -184,55 +184,53 @@ public:
 					*a2 = a2->value.float_v * a1->value.float_v;
 					break;
 				default: {
-					cerr << "Unsupported type for Add: " << a1->type_of() << " and " << a2->type_of();
+					cerr << "Unsupported type for Mul: " << a1->type_of() << " and " << a2->type_of();
 					error();
 				}
 				}
 				break;
 			}
-				/*
 			case operation::Div: {
-				auto a1 = current_stack[size-1];
-				auto a2 = current_stack[size-2];
-				current_stack.resize(size-2);
-				if (a1.type != a2.type) {
-					cerr << "Unsupported type for Division: " << a1.type_of() << " and " << a2.type_of();
+				const auto a1 = stack_frame.back().top-1;
+				const auto a2 = stack_frame.back().top-2;
+				stack_frame.back().top -= 1;
+				if (a1->type != a2->type) {
+					cerr << "Unsupported type for Div: " << a1->type_of() << " and " << a2->type_of();
 					error();
 				}
-				switch (a1.type) {
+				switch (a1->type) {
 				case Type::INT:
-					current_stack.emplace_back(a1.value.int_v / a2.value.int_v);
+					*a2 = a1->value.int_v / a2->value.int_v;
 					break;
 				case Type::FLOAT:
-					current_stack.emplace_back(a1.value.float_v / a2.value.float_v);
+					*a2 = a2->value.float_v / a1->value.float_v;
 					break;
 				default: {
-					cerr << "Unsupported type for Division: " << a1.type_of() << " and " << a2.type_of();
+					cerr << "Unsupported type for Div: " << a1->type_of() << " and " << a2->type_of();
 					error();
 				}
 				}
 				break;
 			}
 			case operation::Mod: {
-				auto a1 = current_stack[size-1];
-				auto a2 = current_stack[size-2];
-				current_stack.resize(size-2);
-				if (a1.type != a2.type) {
-					cerr << "Unsupported type for Modulo: " << a1.type_of() << " and " << a2.type_of();
+				const auto a1 = stack_frame.back().top-1;
+				const auto a2 = stack_frame.back().top-2;
+				stack_frame.back().top -= 1;
+				if (a1->type != a2->type) {
+					cerr << "Unsupported type for Mod: " << a1->type_of() << " and " << a2->type_of();
 					error();
 				}
-				switch (a1.type) {
+				switch (a1->type) {
 				case Type::INT:
-					current_stack.emplace_back(a1.value.int_v % a2.value.int_v);
+					*a2 = a1->value.int_v % a2->value.int_v;
 					break;
 				default: {
-					cerr << "Unsupported type for Modulo: " << a1.type_of() << " and " << a2.type_of();
+					cerr << "Unsupported type for Mod: " << a1->type_of() << " and " << a2->type_of();
 					error();
 				}
 				}
 				break;
 			}
-			*/
 			case operation::Print:
 				std::cout << (--stack_frame.back().top)->to_string();
 				break;
@@ -244,121 +242,120 @@ public:
 				call(data);
 				break;
 
-				/*
 			case operation::AddBy: {
-				auto& origin = current_frame.local_variables[data];
-				auto a = current_stack[size-1];
-				current_stack.resize(size-1);
-				if (origin.type != a.type) {
-					cerr << "Unsupported type for Add: " << origin.type_of() << " and " << a.type_of();
+				EsmelObject* origin = &stack_frame.back().base[data];
+				EsmelObject a = *--stack_frame.back().top;
+				if (origin->type != a.type) {
+					cerr << "Unsupported type for AddBy: " << origin->type_of() << " and " << a.type_of();
 					error();
 				}
 				switch (a.type) {
 				case Type::INT:
-					origin.value.int_v += a.value.int_v;
+					origin->value.int_v += a.value.int_v;
 					break;
 				case Type::FLOAT:
-					origin.value.float_v += a.value.float_v;;
+					origin->value.float_v += a.value.float_v;
 					break;
 				default: {
-					cerr << "Unsupported type for Add: " << a.type_of() << " and " << a.type_of();
+					cerr << "Unsupported type for AddBy: " << origin->type_of() << " and " << a.type_of();
 					error();
 				}
 				}
 				break;
 			}
+
 			case operation::SubBy: {
-				auto& origin = current_frame.local_variables[data];
-				auto a = current_stack[size-1];
-				current_stack.resize(size-1);
-				if (origin.type != a.type) {
-					cerr << "Unsupported type for Subtract: " << origin.type_of() << " and " << a.type_of();
+				EsmelObject* origin = &stack_frame.back().base[data];
+				EsmelObject a = *--stack_frame.back().top;
+				if (origin->type != a.type) {
+					cerr << "Unsupported type for SubBy: " << origin->type_of() << " and " << a.type_of();
 					error();
 				}
 				switch (a.type) {
 				case Type::INT:
-					origin.value.int_v -= a.value.int_v;
+					origin->value.int_v -= a.value.int_v;
 					break;
 				case Type::FLOAT:
-					origin.value.float_v -= a.value.float_v;;
+					origin->value.float_v -= a.value.float_v;
 					break;
 				default: {
-					cerr << "Unsupported type for Subtract: " << a.type_of() << " and " << a.type_of();
-					error();
-				}
-				}
-				break;
-			}
-			case operation::MulBy: {
-				auto& origin = current_frame.local_variables[data];
-				auto a = current_stack[size-1];
-				current_stack.resize(size-1);
-				if (origin.type != a.type) {
-					cerr << "Unsupported type for Multiply: " << origin.type_of() << " and " << a.type_of();
-					error();
-				}
-				switch (a.type) {
-				case Type::INT:
-					origin.value.int_v *= a.value.int_v;
-					break;
-				case Type::FLOAT:
-					origin.value.float_v *= a.value.float_v;;
-					break;
-				default: {
-					cerr << "Unsupported type for Multiply: " << a.type_of() << " and " << a.type_of();
+					cerr << "Unsupported type for SubBy: " << origin->type_of() << " and " << a.type_of();
 					error();
 				}
 				}
 				break;
 			}
 			case operation::DivBy: {
-				auto& origin = current_frame.local_variables[data];
-				auto a = current_stack[size-1];
-				current_stack.resize(size-1);
-				if (origin.type != a.type) {
-					cerr << "Unsupported type for Division: " << origin.type_of() << " and " << a.type_of();
+				EsmelObject* origin = &stack_frame.back().base[data];
+				EsmelObject a = *--stack_frame.back().top;
+				if (origin->type != a.type) {
+					cerr << "Unsupported type for DivBy: " << origin->type_of() << " and " << a.type_of();
 					error();
 				}
 				switch (a.type) {
 				case Type::INT:
-					origin.value.int_v /= a.value.int_v;
+					origin->value.int_v /= a.value.int_v;
 					break;
 				case Type::FLOAT:
-					origin.value.float_v /= a.value.float_v;;
+					origin->value.float_v /= a.value.float_v;
 					break;
 				default: {
-					cerr << "Unsupported type for Division: " << a.type_of() << " and " << a.type_of();
+					cerr << "Unsupported type for DivBy: " << origin->type_of() << " and " << a.type_of();
+					error();
+				}
+				}
+				break;
+			}
+			case operation::MulBy: {
+				EsmelObject* origin = &stack_frame.back().base[data];
+				EsmelObject a = *--stack_frame.back().top;
+				if (origin->type != a.type) {
+					cerr << "Unsupported type for MulBy: " << origin->type_of() << " and " << a.type_of();
+					error();
+				}
+				switch (a.type) {
+				case Type::INT:
+					origin->value.int_v *= a.value.int_v;
+					break;
+				case Type::FLOAT:
+					origin->value.float_v *= a.value.float_v;
+					break;
+				default: {
+					cerr << "Unsupported type for MulBy: " << origin->type_of() << " and " << a.type_of();
 					error();
 				}
 				}
 				break;
 			}
 			case operation::ModBy: {
-				auto& origin = current_frame.local_variables[data];
-				auto a = current_stack[size-1];
-				current_stack.resize(size-1);
-				if (origin.type != a.type) {
-					cerr << "Unsupported type for Modulo: " << origin.type_of() << " and " << a.type_of();
+				EsmelObject* origin = &stack_frame.back().base[data];
+				EsmelObject a = *--stack_frame.back().top;
+				if (origin->type != a.type) {
+					cerr << "Unsupported type for ModBy: " << origin->type_of() << " and " << a.type_of();
 					error();
 				}
 				switch (a.type) {
 				case Type::INT:
-					origin.value.int_v %= a.value.int_v;
+					origin->value.int_v %= a.value.int_v;
 					break;
 				default: {
-					cerr << "Unsupported type for Modulo: " << a.type_of() << " and " << a.type_of();
+					cerr << "Unsupported type for ModBy: " << origin->type_of() << " and " << a.type_of();
 					error();
 				}
 				}
 				break;
 			}
+
+				/*
 			case operation::Copy:
 				break;
+				*/
 			case operation::Typeof: {
-				current_stack[size-1] = EsmelObject(current_stack[size-1].type);
+				EsmelObject* a = --stack_frame.back().top;
+				*a = EsmelObject(a->type);
+				++stack_frame.back().top;
 				break;
 			}
-			*/
 			case operation::Equal: {
 				EsmelObject* a1 = stack_frame.back().top - 2;
 				const EsmelObject* a2 = stack_frame.back().top - 1;
